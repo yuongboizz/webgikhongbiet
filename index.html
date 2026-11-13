@@ -11,7 +11,7 @@
   <style>
     body {
       font-family: 'Be Vietnam Pro', sans-serif;
-      background-color: #faf9f6;
+      background-color: #faf9f6 !important;
       color: #1e293b;
     }
     .calendar-cell {
@@ -35,6 +35,28 @@
     }
   </style>
 </head>
+  <button id="theme-toggle" style="position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 14px;border-radius:8px;border:1px solid #555;background:#222;color:#fff;cursor:pointer;">
+  🌓 Sáng / Tối
+</button>
+
+<script>
+  const btn = document.getElementById('theme-toggle');
+  let isDark = true; // Mặc định mở web lên là nền tối
+
+  function applyTheme() {
+    document.documentElement.style.filter = isDark ? 'invert(1) hue-rotate(180deg)' : 'none';
+    // Giữ nguyên màu gốc cho hình ảnh/video để không bị âm bản
+    document.querySelectorAll('img, video').forEach(el => {
+      el.style.filter = isDark ? 'invert(1) hue-rotate(180deg)' : 'none';
+    });
+  }
+
+  applyTheme();
+  btn.addEventListener('click', () => {
+    isDark = !isDark;
+    applyTheme();
+  });
+</script>
 <body class="min-h-screen flex flex-col">
 
   <!-- Top Header -->
