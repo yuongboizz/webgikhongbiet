@@ -1143,3 +1143,911 @@
         `;
       }).join('');
     }
+
+    window.adminPromptRenameMember = async function(memberId) {
+      const m = groupData.members?.[memberId];
+      if (!m || !isAdmin) return;
+      const newName = prompt(`Nhập tên mới cho thành viên "${m.name}":`, m.name);
+      if (!newName || !newName.trim() || newName.trim() === m.name) return;
+
+      const trimmed = newName.trim().slice(0, 30);
+      groupData.members[memberId].name = trimmed;
+      if (currentUser && currentUser.id === memberId) {
+        currentUser.name = trimmed;
+        localStorage.setItem('ck_user_profile', JSON.stringify(currentUser));
+      }
+      renderAdminMembersList();
+      showToast(`Đã đổi tên thành "${trimmed}"`, '👑');
+      await pushActionToFirebase('admin_edit_member', { memberId, name: trimmed });
+    };
+
+    window.adminDeleteMember = async function(memberId, btnEl) {
+      if (!isAdmin) {
+        showToast('Bạn cần mở khóa quyền Admin trước!', '⚠️');
+        return;
+      }
+      const m = groupData.members?.[memberId];
+      if (!m) return;
+
+      if (btnEl && btnEl.dataset.confirm !== '1') {
+        btnEl.dataset.confirm = '1';
+        btnEl.textContent = '⚠️ Bấm lại để xóa';
+        btnEl.className = 'bg-rose-600 text-white border border-rose-700 text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg transition';
+        setTimeout(() => {
+          if (btnEl && btnEl.isConnected) {
+            btnEl.dataset.confirm = '0';
+            btnEl.textContent = '🗑️ Xóa nick';
+            btnEl.className = 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition';
+          }
+        }, 3500);
+        return;
+      }
+
+      const deletedName = m.name || 'thành viên';
+
+      if (currentUser && currentUser.id === memberId) {
+        currentUser = null;
+        localStorage.removeItem('ck_user_profile');
+      }
+
+      delete groupData.members[memberId];
+      const affectedDates = [];
+      const emptiedDates = [];
+
+      for (const dk of Object.keys(groupData.availability || {})) {
+        if (groupData.availability[dk]?.[memberId]) {
+          affectedDates.push(dk);
+          delete groupData.availability[dk][memberId];
+          if (Object.keys(groupData.availability[dk]).length === 0) {
+            emptiedDates.push(dk);
+            delete groupData.availability[dk];
+          }
+        }
+      }
+
+      const affectedIdeas = [];
+      for (const ideaId of Object.keys(groupData.ideas || {})) {
+        if (groupData.ideas[ideaId]?.votes?.[memberId]) {
+          affectedIdeas.push(ideaId);
+          delete groupData.ideas[ideaId].votes[memberId];
+        }
+      }
+
+      renderAdminMembersList();
+      renderAll();
+      showToast(`Đã xóa thành viên "${deletedName}" và dọn sạch lịch của họ!`, '🧹');
+
+      await pushActionToFirebase('admin_delete_member', {
+        memberId,
+        affectedDates,
+        emptiedDates,
+        affectedIdeas
+      });
+    };
+
+    window.adminClearAllIdeas = async function() {
+      if (!isAdmin) return;
+      if (!confirm('Xóa toàn bộ danh sách kèo đề xuất hiện tại?')) return;
+      groupData.ideas = {};
+      showToast('Đã xóa sạch toàn bộ đề xuất kèo!', '🧹');
+      await pushActionToFirebase('admin_clear_all_ideas', {});
+    };
+
+    window.adminChangePin = async function() {
+      if (!isAdmin) return;
+      const newPin = document.getElementById('adminNewPinInput').value.trim();
+      if (newPin.length < 4) {
+        showToast('Mã PIN mới cần tối thiểu 4 ký tự!', '⚠️');
+        return;
+      }
+      await pushActionToFirebase('admin_change_pin', { newPin });
+      adminPin = newPin;
+      groupData.adminPin = newPin;
+      localStorage.setItem(`ck_admin_pin_${currentGroup}`, newPin);
+      localStorage.setItem(`ck_local_admin_pin_${currentGroup}`, newPin);
+      document.getElementById('adminNewPinInput').value = '';
+      showToast('Đã cập nhật mã PIN Admin mới!', '🔐');
+    };
+
+    // ==========================================
+    // 7. USER PROFILE & GROUP ACTIONS
+    // ==========================================
+    function initPickers() {
+      const avatarContainer = document.getElementById('avatarPicker');
+      avatarContainer.innerHTML = AVATARS.map(av => `
+        <button type="button" onclick="selectAvatar('${av}')" class="avatar-opt text-xl p-1.5 rounded-xl border transition ${av === selectedAvatar ? 'border-orange-500 bg-orange-50 scale-105' : 'border-slate-200 hover:bg-slate-50'}">
+          ${av}
+        </button>
+      `).join('');
+
+      const colorContainer = document.getElementById('colorPicker');
+      colorContainer.innerHTML = COLORS.map(c => `
+        <button type="button" onclick="selectColor('${c}')" style="background-color: ${c}" class="color-opt w-7 h-7 rounded-full transition ${c === selectedColor ? 'ring-2 ring-offset-2 ring-slate-800 scale-110' : 'opacity-80 hover:opacity-100'}"></button>
+      `).join('');
+    }
+
+    window.selectAvatar = function(av) {
+      selectedAvatar = av;
+      updateAvatarPreviewBox();
+      initPickers();
+    };
+
+    window.selectColor = function(c) {
+      selectedColor = c;
+      initPickers();
+    };
+
+    window.openProfileModal = function() {
+      document.getElementById('profileNameInput').value = currentUser?.name || '';
+      selectedAvatar = currentUser?.avatar || '😎';
+      selectedColor = currentUser?.color || '#f97316';
+      document.getElementById('avatarFileInput').value = '';
+      updateAvatarPreviewBox();
+      initPickers();
+      const modal = document.getElementById('profileModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => document.getElementById('profileNameInput').focus(), 50);
+    };
+
+    window.closeProfileModal = function() {
+      const modal = document.getElementById('profileModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.saveUserProfile = function() {
+      const rawName = document.getElementById('profileNameInput').value.trim();
+      if (!rawName) {
+        showToast('Bạn hãy nhập tên hiển thị nhé!', '⚠️');
+        return;
+      }
+
+      const id = currentUser?.id || ('u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36));
+      currentUser = {
+        id,
+        name: rawName,
+        avatar: selectedAvatar,
+        color: selectedColor
+      };
+
+      localStorage.setItem('ck_user_profile', JSON.stringify(currentUser));
+      groupData.members[id] = currentUser;
+      closeProfileModal();
+      showToast(`Chào ${rawName}! Hồ sơ & ảnh đại diện đã lưu 🎉`);
+      pushActionToFirebase('upsert_member', { member: currentUser });
+    };
+
+    window.copyInviteLink = function() {
+      const url = new URL(window.location.href);
+      url.searchParams.set('group', currentGroup);
+      navigator.clipboard.writeText(url.toString()).then(() => {
+        showToast(`Đã copy link mời nhóm ${currentGroup}!`, '🔗');
+      }).catch(() => {
+        prompt('Copy đường link dưới đây để gửi cho hội bạn:', url.toString());
+      });
+    };
+
+    window.createNewRandomGroup = function() {
+      const prefixes = ['HOIBAN', 'TEAMCHILL', 'KEOVUI', 'DICHOI', 'GANG'];
+      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+      const num = Math.floor(100 + Math.random() * 900);
+      currentGroup = `${prefix}${num}`;
+      groupData = { members: {}, availability: {}, ideas: {}, adminPin: '', updatedAt: 0 };
+      serverHasAdmin = false;
+      syncUrlGroupParam();
+
+      if (currentUser) {
+        groupData.members[currentUser.id] = currentUser;
+        pushActionToFirebase('upsert_member', { member: currentUser });
+      }
+      showToast(`Đã tạo phòng nhóm mới: ${currentGroup}`, '✨');
+    };
+
+    window.openGroupModal = function() {
+      document.getElementById('groupCodeInput').value = currentGroup;
+      const modal = document.getElementById('groupModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeGroupModal = function() {
+      const modal = document.getElementById('groupModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.applyGroupCode = function() {
+      const code = document.getElementById('groupCodeInput').value
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9_-]/g, '');
+      if (!code) {
+        showToast('Vui lòng nhập mã nhóm hợp lệ!', '⚠️');
+        return;
+      }
+      currentGroup = code;
+      groupData = { members: {}, availability: {}, ideas: {}, adminPin: '', updatedAt: 0 };
+      syncUrlGroupParam();
+      closeGroupModal();
+      showToast(`Đã chuyển sang nhóm ${currentGroup}`, '🚀');
+    };
+
+    // ==========================================
+    // 8. CALENDAR & AVAILABILITY
+    // ==========================================
+    window.setCalendarFilter = function(mode) {
+      calendarFilter = mode;
+      const allBtn = document.getElementById('filterAllBtn');
+      const mineBtn = document.getElementById('filterMineBtn');
+      if (mode === 'all') {
+        allBtn.className = 'px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-sm transition';
+        mineBtn.className = 'px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition';
+      } else {
+        mineBtn.className = 'px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-sm transition';
+        allBtn.className = 'px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition';
+      }
+      renderCalendar();
+    };
+
+    window.changeMonth = function(delta) {
+      viewMonth += delta;
+      if (viewMonth > 11) {
+        viewMonth = 0;
+        viewYear++;
+      } else if (viewMonth < 0) {
+        viewMonth = 11;
+        viewYear--;
+      }
+      renderCalendar();
+    };
+
+    window.goToToday = function() {
+      const now = new Date();
+      viewYear = now.getFullYear();
+      viewMonth = now.getMonth();
+      renderCalendar();
+    };
+
+    function loadSlotEditorForMember(targetId) {
+      const myEntry = groupData.availability?.[activeDateKey]?.[targetId];
+      activeSlots = myEntry?.slots ? [...myEntry.slots] : ['Cả ngày'];
+      document.getElementById('dayNoteInput').value = myEntry?.note || '';
+
+      const banner = document.getElementById('adminEditingTargetBanner');
+      const promptEl = document.getElementById('slotFormPrompt');
+      const clearBtn = document.getElementById('clearDaySlotBtn');
+      const saveBtn = document.getElementById('saveDaySlotBtn');
+
+      if (adminTargetMemberId && isAdmin) {
+        const targetMember = groupData.members[adminTargetMemberId];
+        document.getElementById('adminEditingTargetName').textContent = targetMember?.name || 'Thành viên';
+        banner.classList.remove('hidden');
+        promptEl.textContent = `Chỉnh sửa khung giờ rảnh của ${targetMember?.name || 'thành viên'}:`;
+        clearBtn.textContent = 'Xóa lịch người này';
+        saveBtn.textContent = 'Lưu thay đổi (Admin) ✓';
+      } else {
+        banner.classList.add('hidden');
+        promptEl.textContent = 'Khung giờ bạn có thể đi chơi:';
+        clearBtn.textContent = 'Tôi bận ngày này';
+        saveBtn.textContent = 'Lưu lịch rảnh ✓';
+      }
+
+      updateSlotButtonsUI();
+    }
+
+    window.openDayModal = function(dateKey) {
+      if (!currentUser && !isAdmin) {
+        openProfileModal();
+        showToast('Đăng ký tên & ảnh của bạn trước khi chọn ngày rảnh nhé!', '📸');
+        return;
+      }
+
+      activeDateKey = dateKey;
+      adminTargetMemberId = null;
+      document.getElementById('dayModalTitle').textContent = formatVietnameseDate(dateKey);
+
+      const defaultTargetId = currentUser?.id || Object.keys(groupData.availability?.[dateKey] || {})[0];
+      if (!currentUser && isAdmin && defaultTargetId) {
+        adminTargetMemberId = defaultTargetId;
+      }
+
+      loadSlotEditorForMember(adminTargetMemberId || currentUser?.id);
+      renderDayAttendees(dateKey);
+
+      const modal = document.getElementById('dayModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeDayModal = function() {
+      const modal = document.getElementById('dayModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      activeDateKey = null;
+      adminTargetMemberId = null;
+    };
+
+    window.adminStartEditMemberDay = function(memberId) {
+      if (!isAdmin || !activeDateKey) return;
+      adminTargetMemberId = memberId;
+      loadSlotEditorForMember(memberId);
+      showToast(`Đang chỉnh sửa lịch của ${groupData.members[memberId]?.name || 'thành viên'}`, '✏️');
+    };
+
+    window.cancelAdminEditMemberDay = function() {
+      adminTargetMemberId = null;
+      loadSlotEditorForMember(currentUser?.id);
+    };
+
+    window.adminDeleteMemberDaySlot = async function(memberId) {
+      if (!isAdmin || !activeDateKey) return;
+      const mName = groupData.members[memberId]?.name || 'thành viên này';
+      if (groupData.availability[activeDateKey]) {
+        delete groupData.availability[activeDateKey][memberId];
+        if (Object.keys(groupData.availability[activeDateKey]).length === 0) {
+          delete groupData.availability[activeDateKey];
+        }
+      }
+      if (adminTargetMemberId === memberId) {
+        adminTargetMemberId = null;
+        loadSlotEditorForMember(currentUser?.id);
+      }
+      renderDayAttendees(activeDateKey);
+      showToast(`Admin đã xóa lịch ngày này của ${mName}`, '🗑️');
+      await pushActionToFirebase('admin_set_availability', {
+        dateKey: activeDateKey,
+        memberId,
+        slotData: null
+      });
+    };
+
+    window.adminClearEntireDay = async function() {
+      if (!isAdmin || !activeDateKey) return;
+      if (!confirm(`Xóa toàn bộ lịch rảnh của mọi người trong ngày ${formatVietnameseDate(activeDateKey)}?`)) return;
+      const targetDate = activeDateKey;
+      delete groupData.availability[targetDate];
+      renderDayAttendees(targetDate);
+      showToast('Admin đã xóa sạch lịch rảnh trong ngày!', '🧹');
+      await pushActionToFirebase('admin_clear_day', { dateKey: targetDate });
+    };
+
+    window.toggleSlotSelection = function(slot) {
+      if (slot === 'Cả ngày') {
+        activeSlots = activeSlots.includes('Cả ngày') ? [] : ['Cả ngày'];
+      } else {
+        activeSlots = activeSlots.filter(s => s !== 'Cả ngày');
+        if (activeSlots.includes(slot)) {
+          activeSlots = activeSlots.filter(s => s !== slot);
+        } else {
+          activeSlots.push(slot);
+        }
+        if (activeSlots.length === 3) {
+          activeSlots = ['Cả ngày'];
+        }
+      }
+      updateSlotButtonsUI();
+    };
+
+    function updateSlotButtonsUI() {
+      document.querySelectorAll('.slot-btn').forEach(btn => {
+        const slot = btn.getAttribute('data-slot');
+        const active = activeSlots.includes(slot);
+        btn.className = active
+          ? 'slot-btn py-2 px-2 rounded-xl border border-orange-500 bg-orange-500 text-white text-xs font-extrabold shadow-xs transition'
+          : 'slot-btn py-2 px-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-orange-50 text-xs font-bold transition';
+      });
+    }
+
+    window.saveMyDayAvailability = async function() {
+      if (!activeDateKey) return;
+      const targetId = (adminTargetMemberId && isAdmin) ? adminTargetMemberId : currentUser?.id;
+      if (!targetId) {
+        openProfileModal();
+        return;
+      }
+
+      if (activeSlots.length === 0) {
+        clearMyDayAvailability();
+        return;
+      }
+
+      const note = document.getElementById('dayNoteInput').value.trim();
+      if (!groupData.availability[activeDateKey]) {
+        groupData.availability[activeDateKey] = {};
+      }
+
+      const isEditingOther = Boolean(adminTargetMemberId && isAdmin);
+      if (!isEditingOther && currentUser) {
+        groupData.members[currentUser.id] = currentUser;
+      }
+
+      groupData.availability[activeDateKey][targetId] = {
+        slots: [...activeSlots],
+        note
+      };
+
+      const savedDate = activeDateKey;
+      const savedSlots = [...activeSlots];
+
+      if (isEditingOther) {
+        adminTargetMemberId = null;
+        loadSlotEditorForMember(currentUser?.id);
+        renderDayAttendees(savedDate);
+        showToast('Admin đã cập nhật lịch rảnh thành công!', '👑');
+        await pushActionToFirebase('admin_set_availability', {
+          dateKey: savedDate,
+          memberId: targetId,
+          slotData: { slots: savedSlots, note }
+        });
+      } else {
+        closeDayModal();
+        showToast('Đã cập nhật lịch rảnh của bạn!', '🗓️');
+        await pushActionToFirebase('upsert_member', { member: currentUser });
+        await pushActionToFirebase('set_availability', {
+          dateKey: savedDate,
+          memberId: targetId,
+          slotData: { slots: savedSlots, note }
+        });
+      }
+    };
+
+    window.clearMyDayAvailability = async function() {
+      if (!activeDateKey) return;
+      const targetId = (adminTargetMemberId && isAdmin) ? adminTargetMemberId : currentUser?.id;
+      if (!targetId) return;
+
+      if (groupData.availability[activeDateKey]) {
+        delete groupData.availability[activeDateKey][targetId];
+        if (Object.keys(groupData.availability[activeDateKey]).length === 0) {
+          delete groupData.availability[activeDateKey];
+        }
+      }
+
+      const clearedDate = activeDateKey;
+      const isEditingOther = Boolean(adminTargetMemberId && isAdmin);
+
+      if (isEditingOther) {
+        adminTargetMemberId = null;
+        loadSlotEditorForMember(currentUser?.id);
+        renderDayAttendees(clearedDate);
+        showToast('Admin đã xóa lịch ngày này!', '🗑️');
+        await pushActionToFirebase('admin_set_availability', {
+          dateKey: clearedDate,
+          memberId: targetId,
+          slotData: null
+        });
+      } else {
+        closeDayModal();
+        showToast('Đã hủy đăng ký rảnh ngày này', '🗑️');
+        await pushActionToFirebase('set_availability', {
+          dateKey: clearedDate,
+          memberId: targetId,
+          slotData: null
+        });
+      }
+    };
+
+    function renderDayAttendees(dateKey) {
+      const container = document.getElementById('dayAttendeesList');
+      const clearWholeBtn = document.getElementById('adminClearWholeDayBtn');
+      const dayMap = groupData.availability?.[dateKey] || {};
+      const entries = Object.entries(dayMap);
+      document.getElementById('dayFreeCount').textContent = entries.length;
+
+      if (isAdmin && entries.length > 0) {
+        clearWholeBtn.classList.remove('hidden');
+      } else {
+        clearWholeBtn.classList.add('hidden');
+      }
+
+      if (entries.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 italic py-3 text-center bg-slate-50 rounded-xl">Chưa có ai đăng ký rảnh ngày này.</p>`;
+        return;
+      }
+
+      container.innerHTML = entries.map(([uid, info]) => {
+        const m = groupData.members[uid] || { name: 'Thành viên', avatar: '🙂', color: '#64748b' };
+        const slotsHtml = (info.slots || []).map(s => `<span class="text-[10px] font-bold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-md">${escapeHtml(s)}</span>`).join(' ');
+        const adminControls = isAdmin ? `
+          <div class="flex items-center gap-1 mt-1.5 justify-end">
+            <button type="button" onclick="adminStartEditMemberDay('${uid}')" class="text-[10px] font-extrabold bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-0.5 rounded transition">✏️ Sửa</button>
+            <button type="button" onclick="adminDeleteMemberDaySlot('${uid}')" class="text-[10px] font-extrabold bg-rose-100 hover:bg-rose-200 text-rose-700 px-2 py-0.5 rounded transition">🗑️ Xóa</button>
+          </div>
+        ` : '';
+
+        const avHtml = isImageAvatar(m.avatar)
+          ? renderAvatarHtml(m.avatar, 'w-9 h-9', 'text-base', m.color)
+          : `<span class="w-9 h-9 rounded-full flex items-center justify-center text-base shrink-0" style="background-color: ${m.color}20; border: 1.5px solid ${m.color}">${escapeHtml(m.avatar)}</span>`;
+
+        return `
+          <div class="flex items-start justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+            <div class="flex items-center gap-2.5">
+              ${avHtml}
+              <div>
+                <div class="text-xs font-extrabold text-slate-800">${escapeHtml(m.name)}</div>
+                ${info.note ? `<div class="text-[11px] text-slate-500 mt-0.5">“${escapeHtml(info.note)}”</div>` : ''}
+              </div>
+            </div>
+            <div class="shrink-0">
+              <div class="flex flex-wrap justify-end gap-1">${slotsHtml}</div>
+              ${adminControls}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ==========================================
+    // 9. HANGOUT IDEAS & VOTING
+    // ==========================================
+    window.openIdeaModal = function(prefillDate = '') {
+      if (!currentUser && !isAdmin) {
+        openProfileModal();
+        showToast('Đăng ký hồ sơ của bạn trước khi thêm kèo nhé!', '👋');
+        return;
+      }
+      editingIdeaId = null;
+      document.getElementById('ideaModalHeading').textContent = 'Đề xuất kèo đi chơi mới';
+      document.getElementById('ideaSubmitBtn').textContent = 'Đăng đề xuất';
+      document.getElementById('ideaTitleInput').value = '';
+      document.getElementById('ideaLocationInput').value = '';
+      document.getElementById('ideaDateInput').value = prefillDate || '';
+      const modal = document.getElementById('ideaModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => document.getElementById('ideaTitleInput').focus(), 50);
+    };
+
+    window.adminOpenEditIdeaModal = function(ideaId) {
+      const idea = groupData.ideas[ideaId];
+      if (!idea || !isAdmin) return;
+      editingIdeaId = ideaId;
+      document.getElementById('ideaModalHeading').textContent = '👑 Admin sửa thông tin kèo';
+      document.getElementById('ideaSubmitBtn').textContent = 'Lưu thay đổi';
+      document.getElementById('ideaTitleInput').value = idea.title || '';
+      document.getElementById('ideaLocationInput').value = idea.location || '';
+      document.getElementById('ideaDateInput').value = idea.dateKey || '';
+      const modal = document.getElementById('ideaModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeIdeaModal = function() {
+      const modal = document.getElementById('ideaModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      editingIdeaId = null;
+    };
+
+    window.submitNewIdea = async function() {
+      const title = document.getElementById('ideaTitleInput').value.trim();
+      const location = document.getElementById('ideaLocationInput').value.trim();
+      const dateKey = document.getElementById('ideaDateInput').value;
+
+      if (!title) {
+        showToast('Hãy nhập tên hoạt động / kèo đi chơi!', '⚠️');
+        return;
+      }
+
+      if (editingIdeaId && isAdmin && groupData.ideas[editingIdeaId]) {
+        const targetIdeaId = editingIdeaId;
+        groupData.ideas[targetIdeaId].title = title;
+        groupData.ideas[targetIdeaId].location = location;
+        groupData.ideas[targetIdeaId].dateKey = dateKey;
+        closeIdeaModal();
+        showToast('Admin đã cập nhật nội dung kèo!', '👑');
+        await pushActionToFirebase('admin_edit_idea', {
+          ideaId: targetIdeaId,
+          title,
+          location,
+          dateKey
+        });
+        return;
+      }
+
+      const authorId = currentUser?.id || 'admin';
+      const id = 'idea_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const newIdea = {
+        id,
+        title,
+        location,
+        dateKey,
+        authorId,
+        createdAt: Date.now(),
+        votes: currentUser ? { [currentUser.id]: true } : {}
+      };
+
+      groupData.ideas[id] = newIdea;
+      closeIdeaModal();
+      showToast('Đã đăng đề xuất kèo mới!', '🎯');
+      await pushActionToFirebase('add_idea', { idea: newIdea });
+    };
+
+    window.toggleIdeaVote = function(ideaId) {
+      if (!currentUser) {
+        openProfileModal();
+        showToast('Đăng ký hồ sơ của bạn để thả tim bình chọn nhé!', '❤️');
+        return;
+      }
+      const idea = groupData.ideas[ideaId];
+      if (!idea) return;
+      idea.votes = idea.votes || {};
+      let voted = false;
+      if (idea.votes[currentUser.id]) {
+        delete idea.votes[currentUser.id];
+        voted = false;
+      } else {
+        idea.votes[currentUser.id] = true;
+        voted = true;
+      }
+      pushActionToFirebase('toggle_vote', { ideaId, memberId: currentUser.id, voted });
+    };
+
+    window.deleteIdea = async function(ideaId) {
+      delete groupData.ideas[ideaId];
+      showToast('Đã xóa đề xuất kèo', '🗑️');
+      await pushActionToFirebase(isAdmin ? 'admin_delete_idea' : 'delete_idea', { ideaId });
+    };
+
+    // ==========================================
+    // 10. RENDER FUNCTIONS
+    // ==========================================
+    function renderHeaderAndMembers() {
+      const banner = document.getElementById('welcomeBanner');
+      const headerAvatarEl = document.getElementById('headerAvatar');
+
+      if (currentUser) {
+        headerAvatarEl.innerHTML = renderAvatarHtml(currentUser.avatar, 'w-7 h-7', 'text-lg', currentUser.color);
+        document.getElementById('headerName').textContent = currentUser.name;
+        banner.classList.add('hidden');
+      } else {
+        headerAvatarEl.innerHTML = '👋';
+        document.getElementById('headerName').textContent = 'Đăng ký / Nhập tên ▾';
+        banner.classList.remove('hidden');
+      }
+
+      const members = Object.values(groupData.members || {});
+      document.getElementById('memberCount').textContent = members.length;
+      const strip = document.getElementById('memberListStrip');
+
+      if (members.length === 0) {
+        strip.innerHTML = `<span class="text-slate-400 italic">Chưa có thành viên nào</span>`;
+      } else {
+        strip.innerHTML = members.map(m => `
+          <span class="inline-flex items-center gap-1.5 bg-white border border-slate-200 pl-1 pr-2.5 py-0.5 rounded-full text-xs font-bold text-slate-700 shadow-2xs">
+            ${renderAvatarHtml(m.avatar, 'w-5 h-5', 'text-sm', m.color)}
+            <span>${escapeHtml(m.name)}</span>
+          </span>
+        `).join('');
+      }
+    }
+
+    function renderCalendar() {
+      document.getElementById('calendarMonthTitle').textContent = `Tháng ${viewMonth + 1}, ${viewYear}`;
+      const grid = document.getElementById('calendarGrid');
+
+      const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+      const startOffset = (firstDay + 6) % 7;
+      const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+      const totalMembers = Math.max(Object.keys(groupData.members || {}).length, 1);
+      const todayKey = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
+
+      let maxCountInMonth = 0;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dk = formatDateKey(viewYear, viewMonth, d);
+        const cnt = Object.keys(groupData.availability?.[dk] || {}).length;
+        if (cnt > maxCountInMonth) maxCountInMonth = cnt;
+      }
+
+      let html = '';
+      for (let i = 0; i < startOffset; i++) {
+        html += `<div class="empty-cell h-20 sm:h-24 rounded-2xl bg-slate-50/50"></div>`;
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dk = formatDateKey(viewYear, viewMonth, d);
+        const dayAvail = groupData.availability?.[dk] || {};
+        const freeUserIds = Object.keys(dayAvail);
+        const isMine = currentUser && Boolean(dayAvail[currentUser.id]);
+
+        if (calendarFilter === 'mine' && !isMine) {
+          html += `
+            <button onclick="openDayModal('${dk}')" class="calendar-cell h-20 sm:h-24 rounded-2xl border border-slate-100 bg-slate-50/40 p-2 flex flex-col justify-between text-left opacity-45 hover:opacity-90">
+              <span class="text-xs font-bold text-slate-400">${d}</span>
+            </button>
+          `;
+          continue;
+        }
+
+        const count = freeUserIds.length;
+        const isToday = dk === todayKey;
+        const isGolden = count >= 2 && count === maxCountInMonth;
+
+        let cellStyle = 'bg-white border-slate-200/80 hover:border-orange-300';
+        if (isGolden) {
+          cellStyle = 'golden-glow border-2';
+        } else if (count >= 3 || (count >= 2 && count / totalMembers >= 0.6)) {
+          cellStyle = 'bg-amber-50/90 border-amber-300';
+        } else if (count === 2) {
+          cellStyle = 'bg-orange-50/80 border-orange-200';
+        } else if (count === 1) {
+          cellStyle = 'bg-orange-50/40 border-orange-100';
+        }
+
+        const avatarsHtml = freeUserIds.slice(0, 4).map(uid => {
+          const m = groupData.members[uid];
+          const av = m?.avatar || '🙂';
+          if (isImageAvatar(av)) {
+            return `<img src="${av.replace(/"/g, '&quot;')}" title="${escapeHtml(m?.name || '')}" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover border border-white shadow-2xs inline-block" />`;
+          }
+          return `<span class="text-xs sm:text-sm leading-none" title="${escapeHtml(m?.name || '')}">${escapeHtml(av)}</span>`;
+        }).join('');
+
+        const extraBadge = count > 4 ? `<span class="text-[10px] font-extrabold text-orange-600">+${count - 4}</span>` : '';
+
+        html += `
+          <button onclick="openDayModal('${dk}')" class="calendar-cell h-20 sm:h-24 rounded-2xl border ${cellStyle} ${isToday ? 'ring-2 ring-orange-500 ring-offset-1' : ''} p-1.5 sm:p-2 flex flex-col justify-between text-left relative">
+            <div class="flex items-center justify-between w-full">
+              <span class="text-xs sm:text-sm font-extrabold ${isToday ? 'text-orange-600' : 'text-slate-800'}">${d}</span>
+              <div class="flex items-center gap-1">
+                ${isGolden ? '<span class="text-[10px]" title="Ngày Vàng">🔥</span>' : ''}
+                ${isMine ? '<span class="w-2 h-2 rounded-full bg-emerald-500" title="Bạn rảnh ngày này"></span>' : ''}
+              </div>
+            </div>
+
+            <div class="w-full">
+              ${count > 0 ? `
+                <div class="flex items-center flex-wrap gap-0.5 mb-0.5">${avatarsHtml}${extraBadge}</div>
+                <div class="text-[10px] font-bold ${isGolden ? 'text-amber-700' : 'text-slate-500'}">${count} người rảnh</div>
+              ` : ''}
+            </div>
+          </button>
+        `;
+      }
+
+      grid.innerHTML = html;
+    }
+
+    function renderGoldenDays() {
+      const container = document.getElementById('goldenDaysList');
+      const todayKey = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
+      const allMembers = Object.values(groupData.members || {});
+      const totalMembers = allMembers.length;
+
+      const ranked = Object.entries(groupData.availability || {})
+        .filter(([dk, users]) => dk >= todayKey && Object.keys(users).length > 0)
+        .map(([dk, users]) => {
+          const userIds = Object.keys(users);
+          const slotCounts = {};
+          userIds.forEach(uid => {
+            const sList = users[uid].slots || [];
+            if (sList.includes('Cả ngày')) {
+              ['Sáng', 'Chiều', 'Tối'].forEach(s => slotCounts[s] = (slotCounts[s] || 0) + 1);
+            } else {
+              sList.forEach(s => slotCounts[s] = (slotCounts[s] || 0) + 1);
+            }
+          });
+          const bestSlots = Object.entries(slotCounts)
+            .filter(([_, c]) => c === userIds.length)
+            .map(([s]) => s);
+
+          return {
+            dateKey: dk,
+            count: userIds.length,
+            userIds,
+            commonSlotText: bestSlots.length === 3 ? 'Cả ngày' : (bestSlots.length > 0 ? bestSlots.join(', ') : 'Linh hoạt giờ')
+          };
+        })
+        .sort((a, b) => b.count - a.count || a.dateKey.localeCompare(b.dateKey))
+        .slice(0, 5);
+
+      if (ranked.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-7 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <div class="text-2xl mb-1">📅</div>
+            <p class="text-xs font-bold text-slate-600">Chưa có lịch rảnh sắp tới nào</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Hãy bấm vào các ngày trên lịch để hệ thống tìm Ngày Vàng cho hội!</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = ranked.map((item, idx) => {
+        const isTop = idx === 0;
+        const pct = totalMembers > 0 ? Math.round((item.count / totalMembers) * 100) : 100;
+        const avatars = item.userIds.map(uid => {
+          const m = groupData.members[uid];
+          const av = m?.avatar || '🙂';
+          if (isImageAvatar(av)) {
+            return `<img src="${av.replace(/"/g, '&quot;')}" title="${escapeHtml(m?.name || '')}" class="w-6 h-6 rounded-full object-cover inline-block border border-white shadow-2xs mr-0.5" />`;
+          }
+          return `<span title="${escapeHtml(m?.name || '')}">${escapeHtml(av)}</span>`;
+        }).join(' ');
+
+        return `
+          <div class="p-3 rounded-2xl border ${isTop ? 'golden-glow' : 'bg-slate-50/70 border-slate-200/80'} flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-xs font-extrabold ${isTop ? 'text-amber-700' : 'text-slate-600'}">#${idx + 1}</span>
+                <button onclick="openDayModal('${item.dateKey}')" class="text-xs sm:text-sm font-extrabold text-slate-900 hover:text-orange-600 truncate">
+                  ${formatVietnameseDate(item.dateKey)}
+                </button>
+              </div>
+              <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-600 flex-wrap">
+                <span class="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  ${item.count}/${Math.max(totalMembers, item.count)} người (${pct}%)
+                </span>
+                <span class="text-slate-500">⏰ ${item.commonSlotText}</span>
+              </div>
+              <div class="mt-1.5 flex items-center flex-wrap gap-1 text-sm">${avatars}</div>
+            </div>
+
+            <button onclick="openIdeaModal('${item.dateKey}')" class="shrink-0 bg-white hover:bg-orange-50 text-orange-600 border border-orange-200 text-[11px] font-extrabold px-2.5 py-2 rounded-xl transition">
+              Chốt kèo →
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderIdeas() {
+      const container = document.getElementById('ideasList');
+      const ideas = Object.values(groupData.ideas || {})
+        .sort((a, b) => Object.keys(b.votes || {}).length - Object.keys(a.votes || {}).length || (b.createdAt || 0) - (a.createdAt || 0));
+
+      if (ideas.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-7 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <div class="text-2xl mb-1">🍕</div>
+            <p class="text-xs font-bold text-slate-600">Chưa có ý tưởng đi chơi nào</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Bấm "+ Thêm kèo" để rủ hội đi ăn nướng, cà phê hoặc phượt cuối tuần!</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = ideas.map(idea => {
+        const voteIds = Object.keys(idea.votes || {});
+        const hasVoted = currentUser && Boolean(idea.votes?.[currentUser.id]);
+        const isAuthor = currentUser && idea.authorId === currentUser.id;
+        const canDelete = isAuthor || isAdmin;
+        const author = groupData.members[idea.authorId];
+
+        return `
+          <div class="p-3.5 rounded-2xl border border-slate-200/90 bg-slate-50/50 hover:bg-white transition flex items-start justify-between gap-3">
+            <div class="min-w-0 space-y-1">
+              <div class="font-extrabold text-sm text-slate-900">${escapeHtml(idea.title)}</div>
+              ${idea.location ? `<div class="text-xs text-slate-600">📍 ${escapeHtml(idea.location)}</div>` : ''}
+              <div class="flex items-center gap-2 flex-wrap pt-0.5 text-[11px] text-slate-500">
+                ${idea.dateKey ? `<span class="bg-amber-50 text-amber-700 border border-amber-200 font-bold px-2 py-0.5 rounded-md">🗓️ ${formatVietnameseDate(idea.dateKey)}</span>` : ''}
+                <span>Đề xuất bởi <strong>${escapeHtml(author?.name || 'Thành viên')}</strong></span>
+                ${isAdmin ? `<button onclick="adminOpenEditIdeaModal('${idea.id}')" class="text-amber-700 hover:underline font-bold">✏️ Sửa</button>` : ''}
+                ${canDelete ? `<button onclick="deleteIdea('${idea.id}')" class="text-rose-500 hover:underline font-semibold">🗑️ Xóa</button>` : ''}
+              </div>
+            </div>
+
+            <button onclick="toggleIdeaVote('${idea.id}')" class="shrink-0 flex flex-col items-center justify-center min-w-[54px] py-2 px-2.5 rounded-2xl border transition ${hasVoted ? 'bg-rose-50 border-rose-300 text-rose-600 shadow-2xs' : 'bg-white border-slate-200 text-slate-600 hover:border-rose-200'}">
+              <span class="text-base leading-none">${hasVoted ? '❤️' : '🤍'}</span>
+              <span class="text-xs font-extrabold mt-1">${voteIds.length}</span>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderAll() {
+      renderHeaderAndMembers();
+      renderCalendar();
+      renderGoldenDays();
+      renderIdeas();
+    }
+
+    // ==========================================
+    // 11. INITIALIZATION
+    // ==========================================
+    syncUrlGroupParam();
+  </script>
+</body>
+</html>
