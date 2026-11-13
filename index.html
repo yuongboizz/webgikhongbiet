@@ -53,11 +53,11 @@
               <span id="syncText">Đang kết nối Netlify...</span>
             </span>
           </div>
-          <p class="text-xs text-slate-500 hidden sm:block">Mở link là dùng ngay — Đồng bộ lịch rảnh & săn Ngày Vàng cho hội bạn</p>
+          <p class="text-xs text-slate-500 hidden sm:block">Mở link là dùng ngay — Đồng bộ tốc độ cao 1s & săn Ngày Vàng cho hội bạn</p>
         </div>
       </div>
 
-      <!-- Group Controls + User Profile -->
+      <!-- Group Controls + User Profile + Admin Button -->
       <div class="flex items-center gap-2 flex-wrap">
         <div class="flex items-center bg-orange-50/80 border border-orange-200 rounded-xl p-1 gap-1">
           <div class="px-2 py-1">
@@ -82,6 +82,30 @@
             <span id="headerName" class="text-xs font-bold text-slate-800">Nhập tên bạn ▾</span>
           </div>
         </button>
+
+        <!-- Admin Button -->
+        <button onclick="handleAdminButtonClick()" id="adminHeaderBtn" class="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 px-3 py-2 rounded-xl text-xs font-extrabold transition" title="Quản trị viên sửa & xóa lịch rác">
+          <span id="adminBtnIcon">🛡️</span>
+          <span id="adminBtnLabel">Admin</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Admin Active Bar (Visible only when Admin is unlocked) -->
+    <div id="adminActiveBar" class="hidden bg-amber-900 text-amber-50 border-t border-amber-700">
+      <div class="max-w-6xl mx-auto px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="bg-amber-500 text-slate-950 font-extrabold px-2 py-0.5 rounded text-[10px] uppercase">👑 Chế độ Admin</span>
+          <span>Bạn có thể sửa/xóa lịch rảnh của bất kỳ ai, xóa thành viên rác và dọn kèo đề xuất.</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openAdminPanelModal()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-2.5 py-1 rounded-lg transition">
+            ⚙️ Bảng quản trị
+          </button>
+          <button onclick="logoutAdmin()" class="bg-amber-800 hover:bg-amber-700 text-amber-100 font-semibold px-2.5 py-1 rounded-lg transition">
+            Thoát Admin
+          </button>
+        </div>
       </div>
     </div>
 
@@ -94,9 +118,14 @@
             <span class="text-slate-400 italic">Chưa có thành viên nào</span>
           </div>
         </div>
-        <button onclick="openProfileModal()" class="text-xs font-bold text-orange-600 hover:text-orange-700 shrink-0">
-          + Thêm / Sửa tên
-        </button>
+        <div class="flex items-center gap-3 shrink-0">
+          <button id="manageMembersQuickBtn" onclick="openAdminPanelModal()" class="hidden text-xs font-bold text-amber-700 hover:text-amber-800">
+            👑 Quản lý thành viên
+          </button>
+          <button onclick="openProfileModal()" class="text-xs font-bold text-orange-600 hover:text-orange-700">
+            + Thêm / Sửa tên
+          </button>
+        </div>
       </div>
     </div>
   </header>
@@ -279,18 +308,24 @@
     </div>
   </div>
 
-  <!-- MODAL 2: Day Availability -->
+  <!-- MODAL 2: Day Availability (With Admin Edit/Delete Support) -->
   <div id="dayModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl modal-animate max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-1">
-        <span class="text-xs font-extrabold uppercase tracking-wider text-orange-500">Đăng ký lịch rảnh</span>
+        <span id="dayModalSubtitle" class="text-xs font-extrabold uppercase tracking-wider text-orange-500">Đăng ký lịch rảnh</span>
         <button onclick="closeDayModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center">✕</button>
       </div>
       <h3 id="dayModalTitle" class="font-extrabold text-xl text-slate-900 mb-4">Thứ Bảy, 14/11/2026</h3>
 
-      <!-- My Slots Selector -->
+      <!-- Admin Editing Banner -->
+      <div id="adminEditingTargetBanner" class="hidden bg-amber-100 border border-amber-300 text-amber-900 rounded-xl px-3.5 py-2 mb-3 flex items-center justify-between gap-2 text-xs">
+        <span>👑 Đang sửa lịch của: <strong id="adminEditingTargetName">...</strong></span>
+        <button type="button" onclick="cancelAdminEditMemberDay()" class="font-extrabold text-amber-800 underline">Quay lại lịch của tôi</button>
+      </div>
+
+      <!-- Slots Selector -->
       <div class="bg-orange-50/70 border border-orange-200/80 rounded-2xl p-4 mb-5">
-        <p class="text-xs font-extrabold text-slate-800 mb-2.5">Khung giờ bạn có thể đi chơi:</p>
+        <p id="slotFormPrompt" class="text-xs font-extrabold text-slate-800 mb-2.5">Khung giờ bạn có thể đi chơi:</p>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3" id="slotButtonsContainer">
           <button type="button" data-slot="Cả ngày" onclick="toggleSlotSelection('Cả ngày')" class="slot-btn py-2 px-2 rounded-xl border text-xs font-bold transition">🌟 Cả ngày</button>
           <button type="button" data-slot="Sáng" onclick="toggleSlotSelection('Sáng')" class="slot-btn py-2 px-2 rounded-xl border text-xs font-bold transition">☀️ Sáng</button>
@@ -302,10 +337,10 @@
         <input id="dayNoteInput" type="text" maxlength="90" placeholder="VD: Tan làm lúc 17h30, đi đâu cũng được..." class="w-full px-3 py-2 rounded-xl bg-white border border-orange-200 focus:border-orange-500 outline-none text-xs" />
 
         <div class="flex items-center justify-between gap-2 mt-3.5">
-          <button type="button" onclick="clearMyDayAvailability()" class="text-xs font-bold text-rose-600 hover:bg-rose-50 px-3 py-2 rounded-xl transition">
+          <button type="button" onclick="clearMyDayAvailability()" id="clearDaySlotBtn" class="text-xs font-bold text-rose-600 hover:bg-rose-50 px-3 py-2 rounded-xl transition">
             Tôi bận ngày này
           </button>
-          <button type="button" onclick="saveMyDayAvailability()" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-sm transition">
+          <button type="button" onclick="saveMyDayAvailability()" id="saveDaySlotBtn" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-sm transition">
             Lưu lịch rảnh ✓
           </button>
         </div>
@@ -313,9 +348,14 @@
 
       <!-- Who is free on this day -->
       <div>
-        <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2.5">
-          Ai đang rảnh ngày này (<span id="dayFreeCount">0</span>)
-        </h4>
+        <div class="flex items-center justify-between mb-2.5">
+          <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+            Ai đang rảnh ngày này (<span id="dayFreeCount">0</span>)
+          </h4>
+          <button id="adminClearWholeDayBtn" type="button" onclick="adminClearEntireDay()" class="hidden text-[11px] font-extrabold text-rose-600 hover:bg-rose-50 px-2 py-1 rounded-lg border border-rose-200 transition">
+            🧹 Xóa sạch ngày này
+          </button>
+        </div>
         <div id="dayAttendeesList" class="space-y-2"></div>
       </div>
     </div>
@@ -339,11 +379,11 @@
     </div>
   </div>
 
-  <!-- MODAL 4: New Hangout Idea -->
+  <!-- MODAL 4: New / Edit Hangout Idea -->
   <div id="ideaModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl modal-animate">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="font-extrabold text-lg text-slate-900">Đề xuất kèo đi chơi mới</h3>
+        <h3 id="ideaModalHeading" class="font-extrabold text-lg text-slate-900">Đề xuất kèo đi chơi mới</h3>
         <button onclick="closeIdeaModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center">✕</button>
       </div>
 
@@ -365,8 +405,94 @@
 
         <div class="pt-2 flex justify-end gap-2">
           <button onclick="closeIdeaModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Hủy</button>
-          <button onclick="submitNewIdea()" class="px-5 py-2.5 rounded-xl text-xs font-extrabold bg-orange-500 hover:bg-orange-600 text-white shadow-sm">Đăng đề xuất</button>
+          <button id="ideaSubmitBtn" onclick="submitNewIdea()" class="px-5 py-2.5 rounded-xl text-xs font-extrabold bg-orange-500 hover:bg-orange-600 text-white shadow-sm">Đăng đề xuất</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 5: Admin Login / First-time Setup -->
+  <div id="adminAuthModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl modal-animate">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">👑</span>
+          <h3 id="adminAuthTitle" class="font-extrabold text-lg text-slate-900">Đăng nhập quyền Admin</h3>
+        </div>
+        <button onclick="closeAdminAuthModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center">✕</button>
+      </div>
+
+      <p id="adminAuthDesc" class="text-xs text-slate-600 mb-4 leading-relaxed">
+        Nhập mã PIN quản trị của nhóm để mở quyền chỉnh sửa, xóa lịch rảnh rác và quản lý thành viên.
+      </p>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Mã PIN / Mật khẩu Admin (tối thiểu 4 ký tự)</label>
+          <input id="adminPinInput" type="password" maxlength="32" placeholder="Nhập mã PIN bí mật của bạn..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none text-sm font-bold" onkeydown="if(event.key==='Enter') submitAdminAuth()" />
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button onclick="closeAdminAuthModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Hủy</button>
+          <button id="adminAuthSubmitBtn" onclick="submitAdminAuth()" class="px-5 py-2.5 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-sm">
+            Xác nhận Admin
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 6: Admin Control Panel -->
+  <div id="adminPanelModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl modal-animate max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">👑</span>
+          <div>
+            <h3 class="font-extrabold text-lg text-slate-900">Bảng Quản Trị Nhóm (<span id="adminPanelGroupName">HOIBANTHAN</span>)</h3>
+            <p class="text-xs text-slate-500">Sửa tên, xóa thành viên rác và dọn dẹp dữ liệu</p>
+          </div>
+        </div>
+        <button onclick="closeAdminPanelModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center">✕</button>
+      </div>
+
+      <!-- Members Management Section -->
+      <div class="mb-5">
+        <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2.5">
+          Danh sách thành viên (<span id="adminMemberCount">0</span>)
+        </h4>
+        <div id="adminMembersList" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+      </div>
+
+      <!-- Bulk Cleanup & Security -->
+      <div class="border-t border-slate-200 pt-4 space-y-4">
+        <div>
+          <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2">Dọn dẹp nhanh</h4>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="adminClearAllIdeas()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-extrabold px-3.5 py-2 rounded-xl transition">
+              🗑️ Xóa tất cả kèo đề xuất
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
+          <h4 class="text-xs font-extrabold text-slate-800 mb-2">Đổi mã PIN Admin</h4>
+          <div class="flex gap-2">
+            <input id="adminNewPinInput" type="password" maxlength="32" placeholder="Nhập mã PIN mới (>= 4 ký tự)..." class="flex-1 px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold outline-none focus:border-amber-500" />
+            <button onclick="adminChangePin()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-extrabold px-4 py-2 rounded-xl transition">
+              Cập nhật PIN
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-5 flex items-center justify-between">
+        <button onclick="logoutAdmin()" class="text-xs font-bold text-rose-600 hover:underline">
+          Thoát quyền Admin trên máy này
+        </button>
+        <button onclick="closeAdminPanelModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold px-5 py-2.5 rounded-xl">
+          Đóng
+        </button>
       </div>
     </div>
   </div>
@@ -384,6 +510,7 @@
     const AVATARS = ['😎', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐸', '🐙', '🦄', '🐝', '🐣', '🍕', '🧋', '🎸', '🚀'];
     const COLORS = ['#f97316', '#ef4444', '#ec4899', '#8b5cf6', '#3b82f6', '#06b6d4', '#10b981', '#eab308'];
     const VN_DAYS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+    const FAST_POLL_INTERVAL_MS = 1000;
 
     const urlParams = new URLSearchParams(window.location.search);
     let currentGroup = (urlParams.get('group') || localStorage.getItem('ck_last_group') || 'HOIBANTHAN')
@@ -398,8 +525,16 @@
     let groupData = {
       members: {},
       availability: {},
-      ideas: {}
+      ideas: {},
+      updatedAt: 0
     };
+
+    // Admin State
+    let serverHasAdmin = false;
+    let adminPin = localStorage.getItem(`ck_admin_pin_${currentGroup}`) || '';
+    let isAdmin = Boolean(adminPin);
+    let adminTargetMemberId = null;
+    let editingIdeaId = null;
 
     const today = new Date();
     let viewYear = today.getFullYear();
@@ -410,8 +545,59 @@
     let isCloudConnected = false;
 
     // ==========================================
-    // 2. NETLIFY BLOBS SYNC ENGINE (/api/sync)
+    // 2. FAST DELTA SYNC ENGINE (1s POLL + BROADCASTCHANNEL)
     // ==========================================
+    let lastKnownUpdatedAt = 0;
+    let isFetching = false;
+    let activeMutationsCount = 0;
+    let pollTimerId = null;
+    let broadcastChannel = null;
+
+    function setupBroadcastChannel() {
+      if (broadcastChannel) {
+        try { broadcastChannel.close(); } catch (e) {}
+      }
+      if ('BroadcastChannel' in window) {
+        broadcastChannel = new BroadcastChannel(`chot_keo_sync_${currentGroup}`);
+        broadcastChannel.onmessage = (event) => {
+          const msg = event.data;
+          if (msg && msg.group === currentGroup && msg.data) {
+            groupData = {
+              members: msg.data.members || {},
+              availability: msg.data.availability || {},
+              ideas: msg.data.ideas || {},
+              updatedAt: msg.data.updatedAt || Date.now()
+            };
+            if (typeof msg.hasAdmin === 'boolean') serverHasAdmin = msg.hasAdmin;
+            lastKnownUpdatedAt = Math.max(lastKnownUpdatedAt, Number(groupData.updatedAt || 0));
+            saveLocalFallback();
+            renderAll();
+            if (activeDateKey) renderDayAttendees(activeDateKey);
+          }
+        };
+      }
+    }
+
+    function broadcastLocalUpdate() {
+      if (broadcastChannel) {
+        try {
+          broadcastChannel.postMessage({
+            group: currentGroup,
+            hasAdmin: serverHasAdmin,
+            data: groupData
+          });
+        } catch (e) {}
+      }
+    }
+
+    function scheduleNextPoll(delayMs = FAST_POLL_INTERVAL_MS) {
+      clearTimeout(pollTimerId);
+      if (document.hidden) return;
+      pollTimerId = setTimeout(() => {
+        fetchGroupFromServer(false);
+      }, delayMs);
+    }
+
     function updateSyncStatus(connected, label) {
       isCloudConnected = connected;
       const badge = document.getElementById('syncBadge');
@@ -422,7 +608,7 @@
       if (connected) {
         badge.className = 'inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
         dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
-        text.textContent = label || 'Đồng bộ trực tuyến Netlify';
+        text.textContent = label || 'Đồng bộ nhanh 1s (Netlify)';
       } else {
         badge.className = 'inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200';
         dot.className = 'w-2 h-2 rounded-full bg-amber-500';
@@ -438,65 +624,121 @@
           groupData = {
             members: parsed.members || {},
             availability: parsed.availability || {},
-            ideas: parsed.ideas || {}
+            ideas: parsed.ideas || {},
+            updatedAt: parsed.updatedAt || 0
           };
         } catch (e) {}
       }
+      serverHasAdmin = Boolean(localStorage.getItem(`ck_local_has_admin_${currentGroup}`));
     }
 
     function saveLocalFallback() {
       localStorage.setItem(`ck_group_data_${currentGroup}`, JSON.stringify(groupData));
     }
 
-    async function fetchGroupFromServer() {
+    async function fetchGroupFromServer(forceFull = false) {
+      if (isFetching || activeMutationsCount > 0) {
+        scheduleNextPoll(FAST_POLL_INTERVAL_MS);
+        return;
+      }
+
+      isFetching = true;
+      const requestedGroup = currentGroup;
+      const sinceParam = (!forceFull && lastKnownUpdatedAt > 0) ? `&since=${lastKnownUpdatedAt}` : '';
+
       try {
-        const res = await fetch(`/api/sync?group=${encodeURIComponent(currentGroup)}`, {
+        const res = await fetch(`/api/sync?group=${encodeURIComponent(requestedGroup)}${sinceParam}`, {
           method: 'GET',
-          headers: { 'Accept': 'application/json' }
+          headers: { 'Accept': 'application/json' },
+          cache: 'no-store'
         });
         if (!res.ok) throw new Error('API unavailable');
         const json = await res.json();
-        if (json.ok && json.data) {
-          groupData = {
-            members: json.data.members || {},
-            availability: json.data.availability || {},
-            ideas: json.data.ideas || {}
-          };
-          saveLocalFallback();
-          updateSyncStatus(true, 'Đồng bộ trực tuyến Netlify');
-          renderAll();
+
+        // Ignore stale response if user switched groups mid-request or started a mutation
+        if (requestedGroup !== currentGroup || activeMutationsCount > 0) {
+          return;
+        }
+
+        if (json.ok) {
+          if (typeof json.hasAdmin === 'boolean') serverHasAdmin = json.hasAdmin;
+          updateSyncStatus(true, 'Đồng bộ nhanh 1s (Netlify)');
+
+          if (json.unchanged) {
+            if (json.updatedAt) lastKnownUpdatedAt = Number(json.updatedAt);
+          } else if (json.data) {
+            groupData = {
+              members: json.data.members || {},
+              availability: json.data.availability || {},
+              ideas: json.data.ideas || {},
+              updatedAt: Number(json.data.updatedAt || Date.now())
+            };
+            lastKnownUpdatedAt = groupData.updatedAt;
+            saveLocalFallback();
+            renderAll();
+            if (activeDateKey) renderDayAttendees(activeDateKey);
+          }
         }
       } catch (err) {
-        loadLocalFallback();
-        updateSyncStatus(false, 'Chế độ cục bộ (chưa deploy)');
-        renderAll();
+        if (!isCloudConnected) {
+          loadLocalFallback();
+          updateSyncStatus(false, 'Chế độ cục bộ (chưa deploy)');
+          renderAll();
+        }
+      } finally {
+        isFetching = false;
+        scheduleNextPoll(FAST_POLL_INTERVAL_MS);
       }
     }
 
     async function pushActionToServer(action, payload) {
+      groupData.updatedAt = Date.now();
       saveLocalFallback();
+      broadcastLocalUpdate();
       renderAll();
 
+      activeMutationsCount++;
+      const targetGroup = currentGroup;
+
       try {
-        const res = await fetch(`/api/sync?group=${encodeURIComponent(currentGroup)}`, {
+        const res = await fetch(`/api/sync?group=${encodeURIComponent(targetGroup)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action, payload })
         });
-        if (!res.ok) throw new Error('Sync failed');
         const json = await res.json();
-        if (json.ok && json.data) {
+        if (!res.ok || !json.ok) {
+          if (res.status === 403) {
+            showToast(json.error || 'Sai mã PIN Admin!', '⛔');
+            logoutAdmin(true);
+            lastKnownUpdatedAt = 0;
+            fetchGroupFromServer(true);
+            return false;
+          }
+          throw new Error(json.error || 'Sync failed');
+        }
+        if (targetGroup === currentGroup && json.data) {
+          if (typeof json.hasAdmin === 'boolean') serverHasAdmin = json.hasAdmin;
           groupData = {
             members: json.data.members || {},
             availability: json.data.availability || {},
-            ideas: json.data.ideas || {}
+            ideas: json.data.ideas || {},
+            updatedAt: Number(json.data.updatedAt || Date.now())
           };
+          lastKnownUpdatedAt = groupData.updatedAt;
           saveLocalFallback();
-          updateSyncStatus(true, 'Đồng bộ trực tuyến Netlify');
+          broadcastLocalUpdate();
+          updateSyncStatus(true, 'Đồng bộ nhanh 1s (Netlify)');
           renderAll();
+          if (activeDateKey) renderDayAttendees(activeDateKey);
         }
+        return true;
       } catch (err) {
         updateSyncStatus(false, 'Lưu trên máy này');
+        return true;
+      } finally {
+        activeMutationsCount = Math.max(0, activeMutationsCount - 1);
+        scheduleNextPoll(FAST_POLL_INTERVAL_MS);
       }
     }
 
@@ -545,10 +787,273 @@
       window.history.replaceState({}, '', url.toString());
       localStorage.setItem('ck_last_group', currentGroup);
       document.getElementById('currentGroupLabel').textContent = currentGroup;
+
+      lastKnownUpdatedAt = 0;
+      setupBroadcastChannel();
+      adminPin = localStorage.getItem(`ck_admin_pin_${currentGroup}`) || '';
+      isAdmin = Boolean(adminPin);
+      updateAdminUI();
     }
 
     // ==========================================
-    // 4. USER PROFILE & GROUP ACTIONS
+    // 4. ADMIN AUTH & MANAGEMENT ACTIONS
+    // ==========================================
+    function updateAdminUI() {
+      const btn = document.getElementById('adminHeaderBtn');
+      const icon = document.getElementById('adminBtnIcon');
+      const label = document.getElementById('adminBtnLabel');
+      const activeBar = document.getElementById('adminActiveBar');
+      const quickManageBtn = document.getElementById('manageMembersQuickBtn');
+
+      if (isAdmin) {
+        btn.className = 'flex items-center gap-1.5 bg-amber-400 hover:bg-amber-500 border border-amber-500 text-slate-950 px-3 py-2 rounded-xl text-xs font-extrabold shadow-xs transition';
+        icon.textContent = '👑';
+        label.textContent = 'Admin (Bật)';
+        activeBar.classList.remove('hidden');
+        quickManageBtn.classList.remove('hidden');
+      } else {
+        btn.className = 'flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 px-3 py-2 rounded-xl text-xs font-extrabold transition';
+        icon.textContent = '🛡️';
+        label.textContent = 'Admin';
+        activeBar.classList.add('hidden');
+        quickManageBtn.classList.add('hidden');
+      }
+    }
+
+    window.handleAdminButtonClick = function() {
+      if (isAdmin) {
+        openAdminPanelModal();
+      } else {
+        openAdminAuthModal();
+      }
+    };
+
+    window.openAdminAuthModal = function() {
+      const title = document.getElementById('adminAuthTitle');
+      const desc = document.getElementById('adminAuthDesc');
+      const submitBtn = document.getElementById('adminAuthSubmitBtn');
+
+      if (!serverHasAdmin) {
+        title.textContent = 'Thiết lập mật khẩu Admin cho nhóm';
+        desc.textContent = 'Nhóm này chưa có Admin. Hãy tạo một mã PIN bí mật (từ 4 ký tự trở lên) để bạn nắm quyền Admin chỉnh sửa và xóa lịch trình rác.';
+        submitBtn.textContent = 'Tạo Admin & Kích hoạt';
+      } else {
+        title.textContent = 'Đăng nhập quyền Admin';
+        desc.textContent = 'Nhập mã PIN Admin của nhóm này để mở khóa quyền sửa và xóa lịch trình rác.';
+        submitBtn.textContent = 'Mở khóa Admin';
+      }
+
+      document.getElementById('adminPinInput').value = '';
+      const modal = document.getElementById('adminAuthModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => document.getElementById('adminPinInput').focus(), 50);
+    };
+
+    window.closeAdminAuthModal = function() {
+      const modal = document.getElementById('adminAuthModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.submitAdminAuth = async function() {
+      const pin = document.getElementById('adminPinInput').value.trim();
+      if (pin.length < 4) {
+        showToast('Mã PIN Admin cần tối thiểu 4 ký tự!', '⚠️');
+        return;
+      }
+
+      activeMutationsCount++;
+      try {
+        const res = await fetch(`/api/sync?group=${encodeURIComponent(currentGroup)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'admin_setup_or_verify', payload: { pin } })
+        });
+        const json = await res.json();
+        if (!res.ok || !json.ok) {
+          showToast(json.error || 'Sai mã PIN Admin!', '⛔');
+          return;
+        }
+        adminPin = pin;
+        isAdmin = true;
+        serverHasAdmin = true;
+        localStorage.setItem(`ck_admin_pin_${currentGroup}`, pin);
+        if (json.data) {
+          groupData = {
+            members: json.data.members || {},
+            availability: json.data.availability || {},
+            ideas: json.data.ideas || {},
+            updatedAt: Number(json.data.updatedAt || Date.now())
+          };
+          lastKnownUpdatedAt = groupData.updatedAt;
+        }
+        closeAdminAuthModal();
+        updateAdminUI();
+        renderAll();
+        showToast('Đã kích hoạt chế độ Admin! 👑', '👑');
+      } catch (err) {
+        const localSavedPin = localStorage.getItem(`ck_local_admin_pin_${currentGroup}`);
+        if (!localSavedPin) {
+          localStorage.setItem(`ck_local_admin_pin_${currentGroup}`, pin);
+          localStorage.setItem(`ck_local_has_admin_${currentGroup}`, '1');
+        } else if (localSavedPin !== pin) {
+          showToast('Sai mã PIN Admin!', '⛔');
+          return;
+        }
+        adminPin = pin;
+        isAdmin = true;
+        serverHasAdmin = true;
+        localStorage.setItem(`ck_admin_pin_${currentGroup}`, pin);
+        closeAdminAuthModal();
+        updateAdminUI();
+        renderAll();
+        showToast('Đã kích hoạt chế độ Admin (cục bộ)! 👑', '👑');
+      } finally {
+        activeMutationsCount = Math.max(0, activeMutationsCount - 1);
+        scheduleNextPoll(FAST_POLL_INTERVAL_MS);
+      }
+    };
+
+    window.logoutAdmin = function(silent = false) {
+      adminPin = '';
+      isAdmin = false;
+      adminTargetMemberId = null;
+      localStorage.removeItem(`ck_admin_pin_${currentGroup}`);
+      closeAdminPanelModal();
+      updateAdminUI();
+      renderAll();
+      if (!silent) showToast('Đã thoát chế độ Admin', '🔒');
+    };
+
+    window.openAdminPanelModal = function() {
+      if (!isAdmin) {
+        openAdminAuthModal();
+        return;
+      }
+      document.getElementById('adminPanelGroupName').textContent = currentGroup;
+      document.getElementById('adminNewPinInput').value = '';
+      renderAdminMembersList();
+      const modal = document.getElementById('adminPanelModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeAdminPanelModal = function() {
+      const modal = document.getElementById('adminPanelModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    function renderAdminMembersList() {
+      const container = document.getElementById('adminMembersList');
+      const members = Object.values(groupData.members || {});
+      document.getElementById('adminMemberCount').textContent = members.length;
+
+      if (members.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 italic py-4 text-center bg-slate-50 rounded-xl">Chưa có thành viên nào trong nhóm.</p>`;
+        return;
+      }
+
+      container.innerHTML = members.map(m => {
+        let freeDaysCount = 0;
+        Object.values(groupData.availability || {}).forEach(dayMap => {
+          if (dayMap && dayMap[m.id]) freeDaysCount++;
+        });
+
+        return `
+          <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="w-8 h-8 rounded-full flex items-center justify-center text-base shrink-0" style="background-color: ${m.color}20; border: 1.5px solid ${m.color}">
+                ${escapeHtml(m.avatar)}
+              </span>
+              <div class="min-w-0">
+                <div class="text-xs font-extrabold text-slate-800 truncate">${escapeHtml(m.name)}</div>
+                <div class="text-[10px] text-slate-500">Đã đăng ký ${freeDaysCount} ngày rảnh</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button onclick="adminPromptRenameMember('${m.id}')" class="bg-white hover:bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition">
+                ✏️ Sửa tên
+              </button>
+              <button onclick="adminDeleteMember('${m.id}')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition">
+                🗑️ Xóa nick
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.adminPromptRenameMember = async function(memberId) {
+      const m = groupData.members[memberId];
+      if (!m || !isAdmin) return;
+      const newName = prompt(`Nhập tên mới cho thành viên "${m.name}":`, m.name);
+      if (!newName || !newName.trim() || newName.trim() === m.name) return;
+
+      const trimmed = newName.trim().slice(0, 30);
+      groupData.members[memberId].name = trimmed;
+      if (currentUser && currentUser.id === memberId) {
+        currentUser.name = trimmed;
+        localStorage.setItem('ck_user_profile', JSON.stringify(currentUser));
+      }
+      renderAdminMembersList();
+      showToast(`Đã đổi tên thành "${trimmed}"`, '👑');
+      await pushActionToServer('admin_edit_member', { adminPin, memberId, name: trimmed });
+    };
+
+    window.adminDeleteMember = async function(memberId) {
+      const m = groupData.members[memberId];
+      if (!m || !isAdmin) return;
+      if (!confirm(`Xóa thành viên "${m.name}" và toàn bộ lịch rảnh rác của người này?`)) return;
+
+      delete groupData.members[memberId];
+      for (const dk of Object.keys(groupData.availability)) {
+        if (groupData.availability[dk]?.[memberId]) {
+          delete groupData.availability[dk][memberId];
+          if (Object.keys(groupData.availability[dk]).length === 0) {
+            delete groupData.availability[dk];
+          }
+        }
+      }
+      for (const ideaId of Object.keys(groupData.ideas)) {
+        if (groupData.ideas[ideaId]?.votes?.[memberId]) {
+          delete groupData.ideas[ideaId].votes[memberId];
+        }
+      }
+
+      renderAdminMembersList();
+      showToast(`Đã xóa thành viên "${m.name}" và dọn sạch lịch của họ!`, '🧹');
+      await pushActionToServer('admin_delete_member', { adminPin, memberId });
+    };
+
+    window.adminClearAllIdeas = async function() {
+      if (!isAdmin) return;
+      if (!confirm('Xóa toàn bộ danh sách kèo đề xuất hiện tại?')) return;
+      groupData.ideas = {};
+      showToast('Đã xóa sạch toàn bộ đề xuất kèo!', '🧹');
+      await pushActionToServer('admin_clear_all_ideas', { adminPin });
+    };
+
+    window.adminChangePin = async function() {
+      if (!isAdmin) return;
+      const newPin = document.getElementById('adminNewPinInput').value.trim();
+      if (newPin.length < 4) {
+        showToast('Mã PIN mới cần tối thiểu 4 ký tự!', '⚠️');
+        return;
+      }
+      const ok = await pushActionToServer('admin_change_pin', { adminPin, newPin });
+      if (ok) {
+        adminPin = newPin;
+        localStorage.setItem(`ck_admin_pin_${currentGroup}`, newPin);
+        localStorage.setItem(`ck_local_admin_pin_${currentGroup}`, newPin);
+        document.getElementById('adminNewPinInput').value = '';
+        showToast('Đã cập nhật mã PIN Admin mới!', '🔐');
+      }
+    };
+
+    // ==========================================
+    // 5. USER PROFILE & GROUP ACTIONS
     // ==========================================
     function initPickers() {
       const avatarContainer = document.getElementById('avatarPicker');
@@ -628,14 +1133,15 @@
       const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
       const num = Math.floor(100 + Math.random() * 900);
       currentGroup = `${prefix}${num}`;
-      groupData = { members: {}, availability: {}, ideas: {} };
+      groupData = { members: {}, availability: {}, ideas: {}, updatedAt: 0 };
+      serverHasAdmin = false;
       syncUrlGroupParam();
 
       if (currentUser) {
         groupData.members[currentUser.id] = currentUser;
         pushActionToServer('upsert_member', { member: currentUser });
       } else {
-        fetchGroupFromServer();
+        fetchGroupFromServer(true);
       }
       showToast(`Đã tạo phòng nhóm mới: ${currentGroup}`, '✨');
     };
@@ -663,10 +1169,10 @@
         return;
       }
       currentGroup = code;
-      groupData = { members: {}, availability: {}, ideas: {} };
+      groupData = { members: {}, availability: {}, ideas: {}, updatedAt: 0 };
       syncUrlGroupParam();
       closeGroupModal();
-      fetchGroupFromServer().then(() => {
+      fetchGroupFromServer(true).then(() => {
         if (currentUser && !groupData.members[currentUser.id]) {
           groupData.members[currentUser.id] = currentUser;
           pushActionToServer('upsert_member', { member: currentUser });
@@ -676,7 +1182,7 @@
     };
 
     // ==========================================
-    // 5. CALENDAR & AVAILABILITY
+    // 6. CALENDAR & AVAILABILITY (WITH ADMIN EDIT/DELETE)
     // ==========================================
     window.setCalendarFilter = function(mode) {
       calendarFilter = mode;
@@ -711,21 +1217,50 @@
       renderCalendar();
     };
 
+    function loadSlotEditorForMember(targetId) {
+      const myEntry = groupData.availability?.[activeDateKey]?.[targetId];
+      activeSlots = myEntry?.slots ? [...myEntry.slots] : ['Cả ngày'];
+      document.getElementById('dayNoteInput').value = myEntry?.note || '';
+
+      const banner = document.getElementById('adminEditingTargetBanner');
+      const promptEl = document.getElementById('slotFormPrompt');
+      const clearBtn = document.getElementById('clearDaySlotBtn');
+      const saveBtn = document.getElementById('saveDaySlotBtn');
+
+      if (adminTargetMemberId && isAdmin) {
+        const targetMember = groupData.members[adminTargetMemberId];
+        document.getElementById('adminEditingTargetName').textContent = targetMember?.name || 'Thành viên';
+        banner.classList.remove('hidden');
+        promptEl.textContent = `Chỉnh sửa khung giờ rảnh của ${targetMember?.name || 'thành viên'}:`;
+        clearBtn.textContent = 'Xóa lịch người này';
+        saveBtn.textContent = 'Lưu thay đổi (Admin) ✓';
+      } else {
+        banner.classList.add('hidden');
+        promptEl.textContent = 'Khung giờ bạn có thể đi chơi:';
+        clearBtn.textContent = 'Tôi bận ngày này';
+        saveBtn.textContent = 'Lưu lịch rảnh ✓';
+      }
+
+      updateSlotButtonsUI();
+    }
+
     window.openDayModal = function(dateKey) {
-      if (!currentUser) {
+      if (!currentUser && !isAdmin) {
         openProfileModal();
         showToast('Nhập tên của bạn trước khi chọn ngày rảnh nhé!', '👋');
         return;
       }
 
       activeDateKey = dateKey;
+      adminTargetMemberId = null;
       document.getElementById('dayModalTitle').textContent = formatVietnameseDate(dateKey);
 
-      const myEntry = groupData.availability?.[dateKey]?.[currentUser.id];
-      activeSlots = myEntry?.slots ? [...myEntry.slots] : ['Cả ngày'];
-      document.getElementById('dayNoteInput').value = myEntry?.note || '';
+      const defaultTargetId = currentUser?.id || Object.keys(groupData.availability?.[dateKey] || {})[0];
+      if (!currentUser && isAdmin && defaultTargetId) {
+        adminTargetMemberId = defaultTargetId;
+      }
 
-      updateSlotButtonsUI();
+      loadSlotEditorForMember(adminTargetMemberId || currentUser?.id);
       renderDayAttendees(dateKey);
 
       const modal = document.getElementById('dayModal');
@@ -738,6 +1273,52 @@
       modal.classList.add('hidden');
       modal.classList.remove('flex');
       activeDateKey = null;
+      adminTargetMemberId = null;
+    };
+
+    window.adminStartEditMemberDay = function(memberId) {
+      if (!isAdmin || !activeDateKey) return;
+      adminTargetMemberId = memberId;
+      loadSlotEditorForMember(memberId);
+      showToast(`Đang chỉnh sửa lịch của ${groupData.members[memberId]?.name || 'thành viên'}`, '✏️');
+    };
+
+    window.cancelAdminEditMemberDay = function() {
+      adminTargetMemberId = null;
+      loadSlotEditorForMember(currentUser?.id);
+    };
+
+    window.adminDeleteMemberDaySlot = async function(memberId) {
+      if (!isAdmin || !activeDateKey) return;
+      const mName = groupData.members[memberId]?.name || 'thành viên này';
+      if (groupData.availability[activeDateKey]) {
+        delete groupData.availability[activeDateKey][memberId];
+        if (Object.keys(groupData.availability[activeDateKey]).length === 0) {
+          delete groupData.availability[activeDateKey];
+        }
+      }
+      if (adminTargetMemberId === memberId) {
+        adminTargetMemberId = null;
+        loadSlotEditorForMember(currentUser?.id);
+      }
+      renderDayAttendees(activeDateKey);
+      showToast(`Admin đã xóa lịch ngày này của ${mName}`, '🗑️');
+      await pushActionToServer('admin_set_availability', {
+        adminPin,
+        dateKey: activeDateKey,
+        memberId,
+        slotData: null
+      });
+    };
+
+    window.adminClearEntireDay = async function() {
+      if (!isAdmin || !activeDateKey) return;
+      if (!confirm(`Xóa toàn bộ lịch rảnh của mọi người trong ngày ${formatVietnameseDate(activeDateKey)}?`)) return;
+      const targetDate = activeDateKey;
+      delete groupData.availability[targetDate];
+      renderDayAttendees(targetDate);
+      showToast('Admin đã xóa sạch lịch rảnh trong ngày!', '🧹');
+      await pushActionToServer('admin_clear_day', { adminPin, dateKey: targetDate });
     };
 
     window.toggleSlotSelection = function(slot) {
@@ -767,8 +1348,14 @@
       });
     }
 
-    window.saveMyDayAvailability = function() {
-      if (!currentUser || !activeDateKey) return;
+    window.saveMyDayAvailability = async function() {
+      if (!activeDateKey) return;
+      const targetId = (adminTargetMemberId && isAdmin) ? adminTargetMemberId : currentUser?.id;
+      if (!targetId) {
+        openProfileModal();
+        return;
+      }
+
       if (activeSlots.length === 0) {
         clearMyDayAvailability();
         return;
@@ -778,47 +1365,92 @@
       if (!groupData.availability[activeDateKey]) {
         groupData.availability[activeDateKey] = {};
       }
-      groupData.members[currentUser.id] = currentUser;
-      groupData.availability[activeDateKey][currentUser.id] = {
+
+      const isEditingOther = Boolean(adminTargetMemberId && isAdmin);
+      if (!isEditingOther && currentUser) {
+        groupData.members[currentUser.id] = currentUser;
+      }
+
+      groupData.availability[activeDateKey][targetId] = {
         slots: [...activeSlots],
         note
       };
 
       const savedDate = activeDateKey;
-      closeDayModal();
-      showToast('Đã cập nhật lịch rảnh của bạn!', '🗓️');
+      const savedSlots = [...activeSlots];
 
-      pushActionToServer('upsert_member', { member: currentUser });
-      pushActionToServer('set_availability', {
-        dateKey: savedDate,
-        memberId: currentUser.id,
-        slotData: { slots: [...activeSlots], note }
-      });
+      if (isEditingOther) {
+        adminTargetMemberId = null;
+        loadSlotEditorForMember(currentUser?.id);
+        renderDayAttendees(savedDate);
+        showToast('Admin đã cập nhật lịch rảnh thành công!', '👑');
+        await pushActionToServer('admin_set_availability', {
+          adminPin,
+          dateKey: savedDate,
+          memberId: targetId,
+          slotData: { slots: savedSlots, note }
+        });
+      } else {
+        closeDayModal();
+        showToast('Đã cập nhật lịch rảnh của bạn!', '🗓️');
+        await pushActionToServer('upsert_member', { member: currentUser });
+        await pushActionToServer('set_availability', {
+          dateKey: savedDate,
+          memberId: targetId,
+          slotData: { slots: savedSlots, note }
+        });
+      }
     };
 
-    window.clearMyDayAvailability = function() {
-      if (!currentUser || !activeDateKey) return;
+    window.clearMyDayAvailability = async function() {
+      if (!activeDateKey) return;
+      const targetId = (adminTargetMemberId && isAdmin) ? adminTargetMemberId : currentUser?.id;
+      if (!targetId) return;
+
       if (groupData.availability[activeDateKey]) {
-        delete groupData.availability[activeDateKey][currentUser.id];
+        delete groupData.availability[activeDateKey][targetId];
         if (Object.keys(groupData.availability[activeDateKey]).length === 0) {
           delete groupData.availability[activeDateKey];
         }
       }
+
       const clearedDate = activeDateKey;
-      closeDayModal();
-      showToast('Đã hủy đăng ký rảnh ngày này', '🗑️');
-      pushActionToServer('set_availability', {
-        dateKey: clearedDate,
-        memberId: currentUser.id,
-        slotData: null
-      });
+      const isEditingOther = Boolean(adminTargetMemberId && isAdmin);
+
+      if (isEditingOther) {
+        adminTargetMemberId = null;
+        loadSlotEditorForMember(currentUser?.id);
+        renderDayAttendees(clearedDate);
+        showToast('Admin đã xóa lịch ngày này!', '🗑️');
+        await pushActionToServer('admin_set_availability', {
+          adminPin,
+          dateKey: clearedDate,
+          memberId: targetId,
+          slotData: null
+        });
+      } else {
+        closeDayModal();
+        showToast('Đã hủy đăng ký rảnh ngày này', '🗑️');
+        await pushActionToServer('set_availability', {
+          dateKey: clearedDate,
+          memberId: targetId,
+          slotData: null
+        });
+      }
     };
 
     function renderDayAttendees(dateKey) {
       const container = document.getElementById('dayAttendeesList');
+      const clearWholeBtn = document.getElementById('adminClearWholeDayBtn');
       const dayMap = groupData.availability?.[dateKey] || {};
       const entries = Object.entries(dayMap);
       document.getElementById('dayFreeCount').textContent = entries.length;
+
+      if (isAdmin && entries.length > 0) {
+        clearWholeBtn.classList.remove('hidden');
+      } else {
+        clearWholeBtn.classList.add('hidden');
+      }
 
       if (entries.length === 0) {
         container.innerHTML = `<p class="text-xs text-slate-400 italic py-3 text-center bg-slate-50 rounded-xl">Chưa có ai đăng ký rảnh ngày này.</p>`;
@@ -828,6 +1460,13 @@
       container.innerHTML = entries.map(([uid, info]) => {
         const m = groupData.members[uid] || { name: 'Thành viên', avatar: '🙂', color: '#64748b' };
         const slotsHtml = (info.slots || []).map(s => `<span class="text-[10px] font-bold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-md">${escapeHtml(s)}</span>`).join(' ');
+        const adminControls = isAdmin ? `
+          <div class="flex items-center gap-1 mt-1.5 justify-end">
+            <button type="button" onclick="adminStartEditMemberDay('${uid}')" class="text-[10px] font-extrabold bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-0.5 rounded transition">✏️ Sửa</button>
+            <button type="button" onclick="adminDeleteMemberDaySlot('${uid}')" class="text-[10px] font-extrabold bg-rose-100 hover:bg-rose-200 text-rose-700 px-2 py-0.5 rounded transition">🗑️ Xóa</button>
+          </div>
+        ` : '';
+
         return `
           <div class="flex items-start justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100">
             <div class="flex items-center gap-2.5">
@@ -839,21 +1478,27 @@
                 ${info.note ? `<div class="text-[11px] text-slate-500 mt-0.5">“${escapeHtml(info.note)}”</div>` : ''}
               </div>
             </div>
-            <div class="flex flex-wrap justify-end gap-1 shrink-0">${slotsHtml}</div>
+            <div class="shrink-0">
+              <div class="flex flex-wrap justify-end gap-1">${slotsHtml}</div>
+              ${adminControls}
+            </div>
           </div>
         `;
       }).join('');
     }
 
     // ==========================================
-    // 6. HANGOUT IDEAS & VOTING
+    // 7. HANGOUT IDEAS & VOTING (WITH ADMIN EDIT/DELETE)
     // ==========================================
     window.openIdeaModal = function(prefillDate = '') {
-      if (!currentUser) {
+      if (!currentUser && !isAdmin) {
         openProfileModal();
         showToast('Nhập tên của bạn trước khi thêm kèo nhé!', '👋');
         return;
       }
+      editingIdeaId = null;
+      document.getElementById('ideaModalHeading').textContent = 'Đề xuất kèo đi chơi mới';
+      document.getElementById('ideaSubmitBtn').textContent = 'Đăng đề xuất';
       document.getElementById('ideaTitleInput').value = '';
       document.getElementById('ideaLocationInput').value = '';
       document.getElementById('ideaDateInput').value = prefillDate || '';
@@ -863,14 +1508,28 @@
       setTimeout(() => document.getElementById('ideaTitleInput').focus(), 50);
     };
 
+    window.adminOpenEditIdeaModal = function(ideaId) {
+      const idea = groupData.ideas[ideaId];
+      if (!idea || !isAdmin) return;
+      editingIdeaId = ideaId;
+      document.getElementById('ideaModalHeading').textContent = '👑 Admin sửa thông tin kèo';
+      document.getElementById('ideaSubmitBtn').textContent = 'Lưu thay đổi';
+      document.getElementById('ideaTitleInput').value = idea.title || '';
+      document.getElementById('ideaLocationInput').value = idea.location || '';
+      document.getElementById('ideaDateInput').value = idea.dateKey || '';
+      const modal = document.getElementById('ideaModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
     window.closeIdeaModal = function() {
       const modal = document.getElementById('ideaModal');
       modal.classList.add('hidden');
       modal.classList.remove('flex');
+      editingIdeaId = null;
     };
 
-    window.submitNewIdea = function() {
-      if (!currentUser) return;
+    window.submitNewIdea = async function() {
       const title = document.getElementById('ideaTitleInput').value.trim();
       const location = document.getElementById('ideaLocationInput').value.trim();
       const dateKey = document.getElementById('ideaDateInput').value;
@@ -880,20 +1539,38 @@
         return;
       }
 
+      if (editingIdeaId && isAdmin && groupData.ideas[editingIdeaId]) {
+        const targetIdeaId = editingIdeaId;
+        groupData.ideas[targetIdeaId].title = title;
+        groupData.ideas[targetIdeaId].location = location;
+        groupData.ideas[targetIdeaId].dateKey = dateKey;
+        closeIdeaModal();
+        showToast('Admin đã cập nhật nội dung kèo!', '👑');
+        await pushActionToServer('admin_edit_idea', {
+          adminPin,
+          ideaId: targetIdeaId,
+          title,
+          location,
+          dateKey
+        });
+        return;
+      }
+
+      const authorId = currentUser?.id || 'admin';
       const id = 'idea_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       const newIdea = {
         id,
         title,
         location,
         dateKey,
-        authorId: currentUser.id,
-        votes: { [currentUser.id]: true }
+        authorId,
+        votes: currentUser ? { [currentUser.id]: true } : {}
       };
 
       groupData.ideas[id] = newIdea;
       closeIdeaModal();
       showToast('Đã đăng đề xuất kèo mới!', '🎯');
-      pushActionToServer('add_idea', { idea: newIdea });
+      await pushActionToServer('add_idea', { idea: newIdea });
     };
 
     window.toggleIdeaVote = function(ideaId) {
@@ -913,14 +1590,18 @@
       pushActionToServer('toggle_vote', { ideaId, memberId: currentUser.id });
     };
 
-    window.deleteIdea = function(ideaId) {
+    window.deleteIdea = async function(ideaId) {
       delete groupData.ideas[ideaId];
       showToast('Đã xóa đề xuất kèo', '🗑️');
-      pushActionToServer('delete_idea', { ideaId });
+      if (isAdmin) {
+        await pushActionToServer('admin_delete_idea', { adminPin, ideaId });
+      } else {
+        await pushActionToServer('delete_idea', { ideaId });
+      }
     };
 
     // ==========================================
-    // 7. RENDER FUNCTIONS
+    // 8. RENDER FUNCTIONS
     // ==========================================
     function renderHeaderAndMembers() {
       const banner = document.getElementById('welcomeBanner');
@@ -954,14 +1635,13 @@
       document.getElementById('calendarMonthTitle').textContent = `Tháng ${viewMonth + 1}, ${viewYear}`;
       const grid = document.getElementById('calendarGrid');
 
-      const firstDay = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun..6=Sat
-      const startOffset = (firstDay + 6) % 7; // Monday = 0
+      const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+      const startOffset = (firstDay + 6) % 7;
       const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
 
       const totalMembers = Math.max(Object.keys(groupData.members || {}).length, 1);
       const todayKey = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
 
-      // Find max free count in this month to highlight golden days
       let maxCountInMonth = 0;
       for (let d = 1; d <= daysInMonth; d++) {
         const dk = formatDateKey(viewYear, viewMonth, d);
@@ -1044,7 +1724,6 @@
         .filter(([dk, users]) => dk >= todayKey && Object.keys(users).length > 0)
         .map(([dk, users]) => {
           const userIds = Object.keys(users);
-          // Find overlapping slots
           const slotCounts = {};
           userIds.forEach(uid => {
             const sList = users[uid].slots || [];
@@ -1133,6 +1812,7 @@
         const voteIds = Object.keys(idea.votes || {});
         const hasVoted = currentUser && Boolean(idea.votes?.[currentUser.id]);
         const isAuthor = currentUser && idea.authorId === currentUser.id;
+        const canDelete = isAuthor || isAdmin;
         const author = groupData.members[idea.authorId];
 
         return `
@@ -1143,7 +1823,8 @@
               <div class="flex items-center gap-2 flex-wrap pt-0.5 text-[11px] text-slate-500">
                 ${idea.dateKey ? `<span class="bg-amber-50 text-amber-700 border border-amber-200 font-bold px-2 py-0.5 rounded-md">🗓️ ${formatVietnameseDate(idea.dateKey)}</span>` : ''}
                 <span>Đề xuất bởi <strong>${escapeHtml(author?.name || 'Thành viên')}</strong></span>
-                ${isAuthor ? `<button onclick="deleteIdea('${idea.id}')" class="text-rose-500 hover:underline font-semibold">Xóa</button>` : ''}
+                ${isAdmin ? `<button onclick="adminOpenEditIdeaModal('${idea.id}')" class="text-amber-700 hover:underline font-bold">✏️ Sửa</button>` : ''}
+                ${canDelete ? `<button onclick="deleteIdea('${idea.id}')" class="text-rose-500 hover:underline font-semibold">🗑️ Xóa</button>` : ''}
               </div>
             </div>
 
@@ -1164,23 +1845,24 @@
     }
 
     // ==========================================
-    // 8. INITIALIZATION & AUTO POLLING
+    // 9. INITIALIZATION & FAST EVENT LISTENERS
     // ==========================================
     syncUrlGroupParam();
     loadLocalFallback();
     renderAll();
-    fetchGroupFromServer();
-
-    // Poll every 4 seconds for real-time updates from friends
-    setInterval(() => {
-      if (!document.hidden) {
-        fetchGroupFromServer();
-      }
-    }, 4000);
+    fetchGroupFromServer(true);
 
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
-        fetchGroupFromServer();
+        fetchGroupFromServer(false);
+      } else {
+        clearTimeout(pollTimerId);
+      }
+    });
+
+    window.addEventListener('focus', () => {
+      if (!document.hidden) {
+        fetchGroupFromServer(false);
       }
     });
   </script>
