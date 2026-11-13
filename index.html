@@ -609,7 +609,7 @@
     const app = initializeApp(firebaseConfig);
     const db = initializeFirestore(app, {
       experimentalForceLongPolling: true
-    });;
+    });
 
     // ==========================================
     // 2. STATE & CONSTANTS
@@ -778,7 +778,6 @@
             serverHasAdmin = false;
           }
 
-          // Nếu người dùng đã có hồ sơ trên máy nhưng chưa nằm trong nhóm mới này thì tự đồng bộ lên
           if (currentUser && !groupData.members[currentUser.id]) {
             groupData.members[currentUser.id] = currentUser;
             setDoc(groupRef, {
@@ -792,8 +791,8 @@
           if (activeDateKey) renderDayAttendees(activeDateKey);
         },
         (error) => {
-          console.warn('Firestore error:', error);
-          updateSyncStatus(false, 'Chưa bật Firestore (lưu cục bộ)');
+          console.error('Firestore error:', error);
+          updateSyncStatus(false, `Lỗi Firebase (${error.code || 'mạng'})`);
         }
       );
     }
@@ -909,8 +908,8 @@
         }
         return true;
       } catch (err) {
-        console.warn('Firestore write fallback:', err);
-        updateSyncStatus(false, 'Chưa bật Firestore (đã lưu trên máy)');
+        console.error('Firestore write error:', err);
+        updateSyncStatus(false, `Lỗi ghi Firebase (${err.code || 'mạng'})`);
         return true;
       }
     }
@@ -937,12 +936,11 @@
         const img = new Image();
         img.onload = function() {
           const canvas = document.createElement('canvas');
-          const size = 160; // 160x160px sắc nét mà chỉ nặng ~8KB
+          const size = 160;
           canvas.width = size;
           canvas.height = size;
           const ctx = canvas.getContext('2d');
 
-          // Tự động cắt vuông chính giữa ảnh
           const minSide = Math.min(img.width, img.height);
           const sx = (img.width - minSide) / 2;
           const sy = (img.height - minSide) / 2;
@@ -1743,7 +1741,7 @@
     };
 
     // ==========================================
-    // 10. RENDER FUNCTIONS (HỖ TRỢ ẢNH AVATAR THẬT)
+    // 10. RENDER FUNCTIONS
     // ==========================================
     function renderHeaderAndMembers() {
       const banner = document.getElementById('welcomeBanner');
@@ -1787,4 +1785,219 @@
       const todayKey = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
 
       let maxCountInMonth = 0;
-      for (let d = 1; d
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dk = formatDateKey(viewYear, viewMonth, d);
+        const cnt = Object.keys(groupData.availability?.[dk] || {}).length;
+        if (cnt > maxCountInMonth) maxCountInMonth = cnt;
+      }
+
+      let html = '';
+      for (let i = 0; i < startOffset; i++) {
+        html += `<div class="empty-cell h-20 sm:h-24 rounded-2xl bg-slate-50/50"></div>`;
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dk = formatDateKey(viewYear, viewMonth, d);
+        const dayAvail = groupData.availability?.[dk] || {};
+        const freeUserIds = Object.keys(dayAvail);
+        const isMine = currentUser && Boolean(dayAvail[currentUser.id]);
+
+        if (calendarFilter === 'mine' && !isMine) {
+          html += `
+            <button onclick="openDayModal('${dk}')" class="calendar-cell h-20 sm:h-24 rounded-2xl border border-slate-100 bg-slate-50/40 p-2 flex flex-col justify-between text-left opacity-45 hover:opacity-90">
+              <span class="text-xs font-bold text-slate-400">${d}</span>
+            </button>
+          `;
+          continue;
+        }
+
+        const count = freeUserIds.length;
+        const isToday = dk === todayKey;
+        const isGolden = count >= 2 && count === maxCountInMonth;
+
+        let cellStyle = 'bg-white border-slate-200/80 hover:border-orange-300';
+        if (isGolden) {
+          cellStyle = 'golden-glow border-2';
+        } else if (count >= 3 || (count >= 2 && count / totalMembers >= 0.6)) {
+          cellStyle = 'bg-amber-50/90 border-amber-300';
+        } else if (count === 2) {
+          cellStyle = 'bg-orange-50/80 border-orange-200';
+        } else if (count === 1) {
+          cellStyle = 'bg-orange-50/40 border-orange-100';
+        }
+
+        const avatarsHtml = freeUserIds.slice(0, 4).map(uid => {
+          const m = groupData.members[uid];
+          const av = m?.avatar || '🙂';
+          if (isImageAvatar(av)) {
+            return `<img src="${av.replace(/"/g, '&quot;')}" title="${escapeHtml(m?.name || '')}" class="w-4 h-4 sm:w-5 sm:h-5 rounded-full object-cover border border-white shadow-2xs inline-block" />`;
+          }
+          return `<span class="text-xs sm:text-sm leading-none" title="${escapeHtml(m?.name || '')}">${escapeHtml(av)}</span>`;
+        }).join('');
+
+        const extraBadge = count > 4 ? `<span class="text-[10px] font-extrabold text-orange-600">+${count - 4}</span>` : '';
+
+        html += `
+          <button onclick="openDayModal('${dk}')" class="calendar-cell h-20 sm:h-24 rounded-2xl border ${cellStyle} ${isToday ? 'ring-2 ring-orange-500 ring-offset-1' : ''} p-1.5 sm:p-2 flex flex-col justify-between text-left relative">
+            <div class="flex items-center justify-between w-full">
+              <span class="text-xs sm:text-sm font-extrabold ${isToday ? 'text-orange-600' : 'text-slate-800'}">${d}</span>
+              <div class="flex items-center gap-1">
+                ${isGolden ? '<span class="text-[10px]" title="Ngày Vàng">🔥</span>' : ''}
+                ${isMine ? '<span class="w-2 h-2 rounded-full bg-emerald-500" title="Bạn rảnh ngày này"></span>' : ''}
+              </div>
+            </div>
+
+            <div class="w-full">
+              ${count > 0 ? `
+                <div class="flex items-center flex-wrap gap-0.5 mb-0.5">${avatarsHtml}${extraBadge}</div>
+                <div class="text-[10px] font-bold ${isGolden ? 'text-amber-700' : 'text-slate-500'}">${count} người rảnh</div>
+              ` : ''}
+            </div>
+          </button>
+        `;
+      }
+
+      grid.innerHTML = html;
+    }
+
+    function renderGoldenDays() {
+      const container = document.getElementById('goldenDaysList');
+      const todayKey = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
+      const allMembers = Object.values(groupData.members || {});
+      const totalMembers = allMembers.length;
+
+      const ranked = Object.entries(groupData.availability || {})
+        .filter(([dk, users]) => dk >= todayKey && Object.keys(users).length > 0)
+        .map(([dk, users]) => {
+          const userIds = Object.keys(users);
+          const slotCounts = {};
+          userIds.forEach(uid => {
+            const sList = users[uid].slots || [];
+            if (sList.includes('Cả ngày')) {
+              ['Sáng', 'Chiều', 'Tối'].forEach(s => slotCounts[s] = (slotCounts[s] || 0) + 1);
+            } else {
+              sList.forEach(s => slotCounts[s] = (slotCounts[s] || 0) + 1);
+            }
+          });
+          const bestSlots = Object.entries(slotCounts)
+            .filter(([_, c]) => c === userIds.length)
+            .map(([s]) => s);
+
+          return {
+            dateKey: dk,
+            count: userIds.length,
+            userIds,
+            commonSlotText: bestSlots.length === 3 ? 'Cả ngày' : (bestSlots.length > 0 ? bestSlots.join(', ') : 'Linh hoạt giờ')
+          };
+        })
+        .sort((a, b) => b.count - a.count || a.dateKey.localeCompare(b.dateKey))
+        .slice(0, 5);
+
+      if (ranked.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-7 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <div class="text-2xl mb-1">📅</div>
+            <p class="text-xs font-bold text-slate-600">Chưa có lịch rảnh sắp tới nào</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Hãy bấm vào các ngày trên lịch để hệ thống tìm Ngày Vàng cho hội!</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = ranked.map((item, idx) => {
+        const isTop = idx === 0;
+        const pct = totalMembers > 0 ? Math.round((item.count / totalMembers) * 100) : 100;
+        const avatars = item.userIds.map(uid => {
+          const m = groupData.members[uid];
+          const av = m?.avatar || '🙂';
+          if (isImageAvatar(av)) {
+            return `<img src="${av.replace(/"/g, '&quot;')}" title="${escapeHtml(m?.name || '')}" class="w-6 h-6 rounded-full object-cover inline-block border border-white shadow-2xs mr-0.5" />`;
+          }
+          return `<span title="${escapeHtml(m?.name || '')}">${escapeHtml(av)}</span>`;
+        }).join(' ');
+
+        return `
+          <div class="p-3 rounded-2xl border ${isTop ? 'golden-glow' : 'bg-slate-50/70 border-slate-200/80'} flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-xs font-extrabold ${isTop ? 'text-amber-700' : 'text-slate-600'}">#${idx + 1}</span>
+                <button onclick="openDayModal('${item.dateKey}')" class="text-xs sm:text-sm font-extrabold text-slate-900 hover:text-orange-600 truncate">
+                  ${formatVietnameseDate(item.dateKey)}
+                </button>
+              </div>
+              <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-600 flex-wrap">
+                <span class="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  ${item.count}/${Math.max(totalMembers, item.count)} người (${pct}%)
+                </span>
+                <span class="text-slate-500">⏰ ${item.commonSlotText}</span>
+              </div>
+              <div class="mt-1.5 flex items-center flex-wrap gap-1 text-sm">${avatars}</div>
+            </div>
+
+            <button onclick="openIdeaModal('${item.dateKey}')" class="shrink-0 bg-white hover:bg-orange-50 text-orange-600 border border-orange-200 text-[11px] font-extrabold px-2.5 py-2 rounded-xl transition">
+              Chốt kèo →
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderIdeas() {
+      const container = document.getElementById('ideasList');
+      const ideas = Object.values(groupData.ideas || {})
+        .sort((a, b) => Object.keys(b.votes || {}).length - Object.keys(a.votes || {}).length || (b.createdAt || 0) - (a.createdAt || 0));
+
+      if (ideas.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-7 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <div class="text-2xl mb-1">🍕</div>
+            <p class="text-xs font-bold text-slate-600">Chưa có ý tưởng đi chơi nào</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Bấm "+ Thêm kèo" để rủ hội đi ăn nướng, cà phê hoặc phượt cuối tuần!</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = ideas.map(idea => {
+        const voteIds = Object.keys(idea.votes || {});
+        const hasVoted = currentUser && Boolean(idea.votes?.[currentUser.id]);
+        const isAuthor = currentUser && idea.authorId === currentUser.id;
+        const canDelete = isAuthor || isAdmin;
+        const author = groupData.members[idea.authorId];
+
+        return `
+          <div class="p-3.5 rounded-2xl border border-slate-200/90 bg-slate-50/50 hover:bg-white transition flex items-start justify-between gap-3">
+            <div class="min-w-0 space-y-1">
+              <div class="font-extrabold text-sm text-slate-900">${escapeHtml(idea.title)}</div>
+              ${idea.location ? `<div class="text-xs text-slate-600">📍 ${escapeHtml(idea.location)}</div>` : ''}
+              <div class="flex items-center gap-2 flex-wrap pt-0.5 text-[11px] text-slate-500">
+                ${idea.dateKey ? `<span class="bg-amber-50 text-amber-700 border border-amber-200 font-bold px-2 py-0.5 rounded-md">🗓️ ${formatVietnameseDate(idea.dateKey)}</span>` : ''}
+                <span>Đề xuất bởi <strong>${escapeHtml(author?.name || 'Thành viên')}</strong></span>
+                ${isAdmin ? `<button onclick="adminOpenEditIdeaModal('${idea.id}')" class="text-amber-700 hover:underline font-bold">✏️ Sửa</button>` : ''}
+                ${canDelete ? `<button onclick="deleteIdea('${idea.id}')" class="text-rose-500 hover:underline font-semibold">🗑️ Xóa</button>` : ''}
+              </div>
+            </div>
+
+            <button onclick="toggleIdeaVote('${idea.id}')" class="shrink-0 flex flex-col items-center justify-center min-w-[54px] py-2 px-2.5 rounded-2xl border transition ${hasVoted ? 'bg-rose-50 border-rose-300 text-rose-600 shadow-2xs' : 'bg-white border-slate-200 text-slate-600 hover:border-rose-200'}">
+              <span class="text-base leading-none">${hasVoted ? '❤️' : '🤍'}</span>
+              <span class="text-xs font-extrabold mt-1">${voteIds.length}</span>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderAll() {
+      renderHeaderAndMembers();
+      renderCalendar();
+      renderGoldenDays();
+      renderIdeas();
+    }
+
+    // ==========================================
+    // 11. INITIALIZATION
+    // ==========================================
+    syncUrlGroupParam();
+  </script>
+</body>
+</html>
