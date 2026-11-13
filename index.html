@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chốt Kèo Đi Chơi — Lịch Rảnh Hội Bạn Thân</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      background-color: #faf9f6;
+      color: #1e293b;
+    }
+    .calendar-cell {
+      transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .calendar-cell:hover:not(.empty-cell) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px -4px rgba(249, 115, 22, 0.16);
+    }
+    .golden-glow {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border-color: #f59e0b !important;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.18);
+    }
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.95) translateY(8px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .modal-animate {
+      animation: popIn 0.2s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Top Header -->
+  <header class="bg-white/95 backdrop-blur border-b border-orange-100 sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <!-- Brand + Sync Status -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white text-xl shadow-md shadow-orange-200">
+          🗓️
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900">Chốt Kèo Đi Chơi</h1>
+            <span id="syncBadge" class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+              <span id="syncDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+              <span id="syncText">Đang kết nối Netlify...</span>
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 hidden sm:block">Mở link là dùng ngay — Đồng bộ lịch rảnh & săn Ngày Vàng cho hội bạn</p>
+        </div>
+      </div>
+
+      <!-- Group Controls + User Profile -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="flex items-center bg-orange-50/80 border border-orange-200 rounded-xl p-1 gap-1">
+          <div class="px-2 py-1">
+            <span class="block text-[9px] uppercase font-bold tracking-wider text-orange-500 leading-none">Nhóm</span>
+            <span id="currentGroupLabel" class="font-extrabold text-xs text-slate-800 tracking-wide">HOIBANTHAN</span>
+          </div>
+          <button onclick="copyInviteLink()" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition shadow-sm flex items-center gap-1">
+            <span>🔗</span> Copy link mời
+          </button>
+          <button onclick="createNewRandomGroup()" class="bg-white hover:bg-orange-100 text-orange-600 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-orange-200 transition">
+            + Tạo nhóm mới
+          </button>
+          <button onclick="openGroupModal()" class="bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 transition">
+            Đổi nhóm
+          </button>
+        </div>
+
+        <button onclick="openProfileModal()" id="profileButton" class="flex items-center gap-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-xl transition">
+          <span id="headerAvatar" class="text-lg">👋</span>
+          <div class="text-left">
+            <span class="block text-[10px] text-slate-500 leading-none">Bạn là</span>
+            <span id="headerName" class="text-xs font-bold text-slate-800">Nhập tên bạn ▾</span>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Members Strip -->
+    <div class="bg-slate-50/80 border-t border-slate-100">
+      <div class="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-2 overflow-x-auto">
+        <div class="flex items-center gap-2 text-xs shrink-0">
+          <span class="font-bold text-slate-600">Thành viên (<span id="memberCount">0</span>):</span>
+          <div id="memberListStrip" class="flex items-center gap-1.5">
+            <span class="text-slate-400 italic">Chưa có thành viên nào</span>
+          </div>
+        </div>
+        <button onclick="openProfileModal()" class="text-xs font-bold text-orange-600 hover:text-orange-700 shrink-0">
+          + Thêm / Sửa tên
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-6xl mx-auto w-full px-4 py-5 flex-1 space-y-5">
+
+    <!-- Onboarding Banner -->
+    <div id="welcomeBanner" class="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400 rounded-2xl p-4 sm:p-5 text-white shadow-lg shadow-orange-200/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-3.5">
+        <div class="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-2xl shrink-0">
+          ✨
+        </div>
+        <div>
+          <h2 class="font-extrabold text-base sm:text-lg">Chào mừng bạn tới hội!</h2>
+          <p class="text-xs sm:text-sm text-orange-50">Chọn tên hiển thị & biểu tượng đại diện để bắt đầu đánh dấu ngày rảnh của bạn nhé.</p>
+        </div>
+      </div>
+      <button onclick="openProfileModal()" class="bg-white text-orange-600 hover:bg-orange-50 font-extrabold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-sm transition shrink-0">
+        Chọn tên của tôi ngay →
+      </button>
+    </div>
+
+    <!-- Two Column Workspace -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+      <!-- Left: Interactive Calendar (7 cols) -->
+      <section class="lg:col-span-7 bg-white rounded-3xl border border-slate-200/80 shadow-sm p-4 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 id="calendarMonthTitle" class="text-xl sm:text-2xl font-extrabold text-slate-900">Tháng 11, 2026</h2>
+              <button onclick="goToToday()" class="text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg transition">
+                Hôm nay
+              </button>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">Bấm vào bất kỳ ngày nào để đăng ký khung giờ rảnh của bạn</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <!-- Filter Pills -->
+            <div class="bg-slate-100 p-1 rounded-xl flex text-xs font-bold">
+              <button id="filterAllBtn" onclick="setCalendarFilter('all')" class="px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-sm transition">
+                Tất cả mọi người
+              </button>
+              <button id="filterMineBtn" onclick="setCalendarFilter('mine')" class="px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition">
+                Lịch của tôi
+              </button>
+            </div>
+
+            <!-- Month Nav -->
+            <div class="flex items-center gap-1">
+              <button onclick="changeMonth(-1)" class="w-8 h-8 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center font-bold text-slate-600 transition" title="Tháng trước">
+                ‹
+              </button>
+              <button onclick="changeMonth(1)" class="w-8 h-8 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center font-bold text-slate-600 transition" title="Tháng sau">
+                ›
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 pb-3 mb-3 border-b border-slate-100">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+            <span>Chấm xanh: Ngày bạn đã đăng ký</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span>Ít người</span>
+            <span class="w-3.5 h-3.5 rounded bg-orange-50 border border-orange-200 inline-block"></span>
+            <span class="w-3.5 h-3.5 rounded bg-orange-100 border border-orange-300 inline-block"></span>
+            <span class="w-3.5 h-3.5 rounded bg-amber-200 border border-amber-400 inline-block"></span>
+            <span class="font-bold text-amber-600">Ngày Vàng 🔥</span>
+          </div>
+        </div>
+
+        <!-- Day Headers -->
+        <div class="grid grid-cols-7 gap-1.5 text-center text-xs font-extrabold text-slate-400 mb-2">
+          <div>T2</div>
+          <div>T3</div>
+          <div>T4</div>
+          <div>T5</div>
+          <div>T6</div>
+          <div class="text-orange-500">T7</div>
+          <div class="text-rose-500">CN</div>
+        </div>
+
+        <!-- Calendar Grid -->
+        <div id="calendarGrid" class="grid grid-cols-7 gap-1.5 sm:gap-2"></div>
+      </section>
+
+      <!-- Right: Golden Days & Hangout Ideas (5 cols) -->
+      <div class="lg:col-span-5 space-y-5">
+
+        <!-- Top 5 Golden Days -->
+        <section class="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-lg">
+                🏆
+              </div>
+              <div>
+                <h2 class="font-extrabold text-base text-slate-900">Top 5 Ngày Vàng Chốt Kèo</h2>
+                <p class="text-xs text-slate-500">Tự động xếp hạng ngày nhiều người rảnh nhất</p>
+              </div>
+            </div>
+          </div>
+
+          <div id="goldenDaysList" class="space-y-2.5">
+            <div class="text-center py-7 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+              <div class="text-2xl mb-1">📅</div>
+              <p class="text-xs font-bold text-slate-600">Chưa có lịch rảnh sắp tới nào</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Hãy bấm vào các ngày trên lịch để hệ thống tìm Ngày Vàng cho hội!</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Hangout Proposals & Voting -->
+        <section class="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-5">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg">
+                🎯
+              </div>
+              <div>
+                <h2 class="font-extrabold text-base text-slate-900">Đề Xuất & Bình Chọn Kèo</h2>
+                <p class="text-xs text-slate-500">Thả tim để chốt địa điểm đi chơi</p>
+              </div>
+            </div>
+            <button onclick="openIdeaModal()" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-extrabold px-3 py-2 rounded-xl shadow-sm transition shrink-0">
+              + Thêm kèo
+            </button>
+          </div>
+
+          <div id="ideasList" class="space-y-2.5">
+            <div class="text-center py-7 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+              <div class="text-2xl mb-1">🍕</div>
+              <p class="text-xs font-bold text-slate-600">Chưa có ý tưởng đi chơi nào</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Bấm "+ Thêm kèo" để rủ hội đi ăn nướng, cà phê hoặc phượt cuối tuần!</p>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- MODAL 1: User Profile -->
+  <div id="profileModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl modal-animate">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-extrabold text-lg text-slate-900">Hồ sơ của bạn trong hội</h3>
+        <button onclick="closeProfileModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center">✕</button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Tên hiển thị / Biệt danh</label>
+          <input id="profileNameInput" type="text" maxlength="25" placeholder="Ví dụ: Minh Béo, Linh Xinh, Tuấn..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none text-sm font-semibold" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Chọn biểu tượng đại diện</label>
+          <div id="avatarPicker" class="grid grid-cols-8 gap-1.5"></div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Màu thẻ nhận diện</label>
+          <div id="colorPicker" class="flex items-center gap-2 flex-wrap"></div>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button onclick="closeProfileModal()" class="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Đóng</button>
+          <button onclick="saveUserProfile()" class="px-5 py-2.5 rounded-xl text-xs font-extrabold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-200">
+            Lưu hồ sơ
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Day Availability -->
+  <div id="dayModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl modal-animate max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-xs font-extrabold uppercase tracking-wider text-orange-500">Đăng ký lịch rảnh</span>
+        <button onclick="closeDayModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center">✕</button>
+      </div>
+      <h3 id="dayModalTitle" class="font-extrabold text-xl text-slate-900 mb-4">Thứ Bảy, 14/11/2026</h3>
+
+      <!-- My Slots Selector -->
+      <div class="bg-orange-50/70 border border-orange-200/80 rounded-2xl p-4 mb-5">
+        <p class="text-xs font-extrabold text-slate-800 mb-2.5">Khung giờ bạn có thể đi chơi:</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3" id="slotButtonsContainer">
+          <button type="button" data-slot="Cả ngày" onclick="toggleSlotSelection('Cả ngày')" class="slot-btn py-2 px-2 rounded-xl border text-xs font-bold transition">🌟 Cả ngày</button>
+          <button type="button" data-slot="Sáng" onclick="toggleSlotSelection('Sáng')" class="slot-btn py-2 px-2 rounded-xl border text-xs font-bold transition">☀️ Sáng</button>
+          <button type="button" data-slot="Chiều" onclick="toggleSlotSelection('Chiều')" class="slot-btn py-2 px-2 rounded-xl border text-xs font-bold transition">🌤️ Chiều</button>
+          <button type="button" data-slot="Tối" onclick="toggleSlotSelection('Tối')" class="slot-btn py-2 px-2 rounded-xl border text-xs font-bold transition">🌙 Tối</button>
+        </div>
+
+        <label class="block text-xs font-bold text-slate-700 mb-1">Ghi chú thêm (không bắt buộc)</label>
+        <input id="dayNoteInput" type="text" maxlength="90" placeholder="VD: Tan làm lúc 17h30, đi đâu cũng được..." class="w-full px-3 py-2 rounded-xl bg-white border border-orange-200 focus:border-orange-500 outline-none text-xs" />
+
+        <div class="flex items-center justify-between gap-2 mt-3.5">
+          <button type="button" onclick="clearMyDayAvailability()" class="text-xs font-bold text-rose-600 hover:bg-rose-50 px-3 py-2 rounded-xl transition">
+            Tôi bận ngày này
+          </button>
+          <button type="button" onclick="saveMyDayAvailability()" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-sm transition">
+            Lưu lịch rảnh ✓
+          </button>
+        </div>
+      </div>
+
+      <!-- Who is free on this day -->
+      <div>
+        <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2.5">
+          Ai đang rảnh ngày này (<span id="dayFreeCount">0</span>)
+        </h4>
+        <div id="dayAttendeesList" class="space-y-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: Switch Group -->
+  <div id="groupModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl modal-animate">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-extrabold text-lg text-slate-900">Chuyển hoặc tham gia phòng nhóm</h3>
+        <button onclick="closeGroupModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center">✕</button>
+      </div>
+      <p class="text-xs text-slate-500 mb-4">Nhập mã nhóm của hội bạn (viết liền không dấu). Mỗi mã nhóm có lịch rảnh và danh sách kèo riêng biệt.</p>
+
+      <input id="groupCodeInput" type="text" maxlength="24" placeholder="VD: HOIBANTHAN, TEAMCHILL..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-orange-500 outline-none text-sm font-extrabold uppercase tracking-wider mb-4" />
+
+      <div class="flex justify-end gap-2">
+        <button onclick="closeGroupModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Hủy</button>
+        <button onclick="applyGroupCode()" class="px-5 py-2 rounded-xl text-xs font-extrabold bg-orange-500 hover:bg-orange-600 text-white">Vào nhóm này</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: New Hangout Idea -->
+  <div id="ideaModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl modal-animate">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-extrabold text-lg text-slate-900">Đề xuất kèo đi chơi mới</h3>
+        <button onclick="closeIdeaModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center">✕</button>
+      </div>
+
+      <div class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Tên kèo / Hoạt động *</label>
+          <input id="ideaTitleInput" type="text" maxlength="60" placeholder="VD: Nướng BBQ sân thượng, Cà phê boardgame..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-orange-500 outline-none text-sm font-semibold" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Địa điểm hoặc ghi chú chi tiết</label>
+          <input id="ideaLocationInput" type="text" maxlength="80" placeholder="VD: Quán Gogi Cầu Giấy hoặc Hồ Tây..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-orange-500 outline-none text-sm" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Ngày dự kiến (không bắt buộc)</label>
+          <input id="ideaDateInput" type="date" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-orange-500 outline-none text-sm" />
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button onclick="closeIdeaModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Hủy</button>
+          <button onclick="submitNewIdea()" class="px-5 py-2.5 rounded-xl text-xs font-extrabold bg-orange-500 hover:bg-orange-600 text-white shadow-sm">Đăng đề xuất</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-xl z-50 hidden items-center gap-2 transition">
+    <span id="toastIcon">✅</span>
+    <span id="toastMsg">Đã lưu!</span>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. STATE & CONSTANTS
+    // ==========================================
+    const AVATARS = ['😎', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐸', '🐙', '🦄', '🐝', '🐣', '🍕', '🧋', '🎸', '🚀'];
+    const COLORS = ['#f97316', '#ef4444', '#ec4899', '#8b5cf6', '#3b82f6', '#06b6d4', '#10b981', '#eab308'];
+    const VN_DAYS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+
+    const urlParams = new URLSearchParams(window.location.search);
+    let currentGroup = (urlParams.get('group') || localStorage.getItem('ck_last_group') || 'HOIBANTHAN')
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9_-]/g, '') || 'HOIBANTHAN';
+
+    let currentUser = JSON.parse(localStorage.getItem('ck_user_profile') || 'null');
+    let selectedAvatar = currentUser?.avatar || '😎';
+    let selectedColor = currentUser?.color || '#f97316';
+
+    let groupData = {
+      members: {},
+      availability: {},
+      ideas: {}
+    };
+
+    const today = new Date();
+    let viewYear = today.getFullYear();
+    let viewMonth = today.getMonth();
+    let calendarFilter = 'all';
+    let activeDateKey = null;
+    let activeSlots = [];
+    let isCloudConnected = false;
+
+    // ==========================================
+    // 2. NETLIFY BLOBS SYNC ENGINE (/api/sync)
+    // ==========================================
+    function updateSyncStatus(connected, label) {
+      isCloudConnected = connected;
+      const badge = document.getElementById('syncBadge');
+      const dot = document.getElementById('syncDot');
+      const text = document.getElementById('syncText');
+      if (!badge || !dot || !text) return;
+
+      if (connected) {
+        badge.className = 'inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+        text.textContent = label || 'Đồng bộ trực tuyến Netlify';
+      } else {
+        badge.className = 'inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200';
+        dot.className = 'w-2 h-2 rounded-full bg-amber-500';
+        text.textContent = label || 'Lưu cục bộ trên máy';
+      }
+    }
+
+    function loadLocalFallback() {
+      const saved = localStorage.getItem(`ck_group_data_${currentGroup}`);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          groupData = {
+            members: parsed.members || {},
+            availability: parsed.availability || {},
+            ideas: parsed.ideas || {}
+          };
+        } catch (e) {}
+      }
+    }
+
+    function saveLocalFallback() {
+      localStorage.setItem(`ck_group_data_${currentGroup}`, JSON.stringify(groupData));
+    }
+
+    async function fetchGroupFromServer() {
+      try {
+        const res = await fetch(`/api/sync?group=${encodeURIComponent(currentGroup)}`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+        if (!res.ok) throw new Error('API unavailable');
+        const json = await res.json();
+        if (json.ok && json.data) {
+          groupData = {
+            members: json.data.members || {},
+            availability: json.data.availability || {},
+            ideas: json.data.ideas || {}
+          };
+          saveLocalFallback();
+          updateSyncStatus(true, 'Đồng bộ trực tuyến Netlify');
+          renderAll();
+        }
+      } catch (err) {
+        loadLocalFallback();
+        updateSyncStatus(false, 'Chế độ cục bộ (chưa deploy)');
+        renderAll();
+      }
+    }
+
+    async function pushActionToServer(action, payload) {
+      saveLocalFallback();
+      renderAll();
+
+      try {
+        const res = await fetch(`/api/sync?group=${encodeURIComponent(currentGroup)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, payload })
+        });
+        if (!res.ok) throw new Error('Sync failed');
+        const json = await res.json();
+        if (json.ok && json.data) {
+          groupData = {
+            members: json.data.members || {},
+            availability: json.data.availability || {},
+            ideas: json.data.ideas || {}
+          };
+          saveLocalFallback();
+          updateSyncStatus(true, 'Đồng bộ trực tuyến Netlify');
+          renderAll();
+        }
+      } catch (err) {
+        updateSyncStatus(false, 'Lưu trên máy này');
+      }
+    }
+
+    // ==========================================
+    // 3. HELPER FUNCTIONS
+    // ==========================================
+    function showToast(msg, icon = '✅') {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').textContent = msg;
+      document.getElementById('toastIcon').textContent = icon;
+      toast.classList.remove('hidden');
+      toast.classList.add('flex');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
+        toast.classList.add('hidden');
+        toast.classList.remove('flex');
+      }, 2800);
+    }
+
+    function formatDateKey(y, m, d) {
+      return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+
+    function parseDateKey(dateKey) {
+      const [y, m, d] = dateKey.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function formatVietnameseDate(dateKey) {
+      const dt = parseDateKey(dateKey);
+      const dayName = VN_DAYS[dt.getDay()];
+      return `${dayName}, ${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`;
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function syncUrlGroupParam() {
+      const url = new URL(window.location.href);
+      url.searchParams.set('group', currentGroup);
+      window.history.replaceState({}, '', url.toString());
+      localStorage.setItem('ck_last_group', currentGroup);
+      document.getElementById('currentGroupLabel').textContent = currentGroup;
+    }
+
+    // ==========================================
+    // 4. USER PROFILE & GROUP ACTIONS
+    // ==========================================
+    function initPickers() {
+      const avatarContainer = document.getElementById('avatarPicker');
+      avatarContainer.innerHTML = AVATARS.map(av => `
+        <button type="button" onclick="selectAvatar('${av}')" class="avatar-opt text-xl p-1.5 rounded-xl border transition ${av === selectedAvatar ? 'border-orange-500 bg-orange-50 scale-105' : 'border-slate-200 hover:bg-slate-50'}">
+          ${av}
+        </button>
+      `).join('');
+
+      const colorContainer = document.getElementById('colorPicker');
+      colorContainer.innerHTML = COLORS.map(c => `
+        <button type="button" onclick="selectColor('${c}')" style="background-color: ${c}" class="color-opt w-7 h-7 rounded-full transition ${c === selectedColor ? 'ring-2 ring-offset-2 ring-slate-800 scale-110' : 'opacity-80 hover:opacity-100'}"></button>
+      `).join('');
+    }
+
+    window.selectAvatar = function(av) {
+      selectedAvatar = av;
+      initPickers();
+    };
+
+    window.selectColor = function(c) {
+      selectedColor = c;
+      initPickers();
+    };
+
+    window.openProfileModal = function() {
+      document.getElementById('profileNameInput').value = currentUser?.name || '';
+      selectedAvatar = currentUser?.avatar || '😎';
+      selectedColor = currentUser?.color || '#f97316';
+      initPickers();
+      const modal = document.getElementById('profileModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => document.getElementById('profileNameInput').focus(), 50);
+    };
+
+    window.closeProfileModal = function() {
+      const modal = document.getElementById('profileModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.saveUserProfile = function() {
+      const rawName = document.getElementById('profileNameInput').value.trim();
+      if (!rawName) {
+        showToast('Bạn hãy nhập tên hiển thị nhé!', '⚠️');
+        return;
+      }
+
+      const id = currentUser?.id || ('u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36));
+      currentUser = {
+        id,
+        name: rawName,
+        avatar: selectedAvatar,
+        color: selectedColor
+      };
+
+      localStorage.setItem('ck_user_profile', JSON.stringify(currentUser));
+      groupData.members[id] = currentUser;
+      closeProfileModal();
+      showToast(`Chào ${rawName}! Bạn đã sẵn sàng chốt kèo 🎉`);
+      pushActionToServer('upsert_member', { member: currentUser });
+    };
+
+    window.copyInviteLink = function() {
+      const url = new URL(window.location.href);
+      url.searchParams.set('group', currentGroup);
+      navigator.clipboard.writeText(url.toString()).then(() => {
+        showToast(`Đã copy link mời nhóm ${currentGroup}!`, '🔗');
+      }).catch(() => {
+        prompt('Copy đường link dưới đây để gửi cho hội bạn:', url.toString());
+      });
+    };
+
+    window.createNewRandomGroup = function() {
+      const prefixes = ['HOIBAN', 'TEAMCHILL', 'KEOVUI', 'DICHOI', 'GANG'];
+      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+      const num = Math.floor(100 + Math.random() * 900);
+      currentGroup = `${prefix}${num}`;
+      groupData = { members: {}, availability: {}, ideas: {} };
+      syncUrlGroupParam();
+
+      if (currentUser) {
+        groupData.members[currentUser.id] = currentUser;
+        pushActionToServer('upsert_member', { member: currentUser });
+      } else {
+        fetchGroupFromServer();
+      }
+      showToast(`Đã tạo phòng nhóm mới: ${currentGroup}`, '✨');
+    };
+
+    window.openGroupModal = function() {
+      document.getElementById('groupCodeInput').value = currentGroup;
+      const modal = document.getElementById('groupModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeGroupModal = function() {
+      const modal = document.getElementById('groupModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.applyGroupCode = function() {
+      const code = document.getElementById('groupCodeInput').value
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9_-]/g, '');
+      if (!code) {
+        showToast('Vui lòng nhập mã nhóm hợp lệ!', '⚠️');
+        return;
+      }
+      currentGroup = code;
+      groupData = { members: {}, availability: {}, ideas: {} };
+      syncUrlGroupParam();
+      closeGroupModal();
+      fetchGroupFromServer().then(() => {
+        if (currentUser && !groupData.members[currentUser.id]) {
+          groupData.members[currentUser.id] = currentUser;
+          pushActionToServer('upsert_member', { member: currentUser });
+        }
+      });
+      showToast(`Đã chuyển sang nhóm ${currentGroup}`, '🚀');
+    };
+
+    // ==========================================
+    // 5. CALENDAR & AVAILABILITY
+    // ==========================================
+    window.setCalendarFilter = function(mode) {
+      calendarFilter = mode;
+      const allBtn = document.getElementById('filterAllBtn');
+      const mineBtn = document.getElementById('filterMineBtn');
+      if (mode === 'all') {
+        allBtn.className = 'px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-sm transition';
+        mineBtn.className = 'px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition';
+      } else {
+        mineBtn.className = 'px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-sm transition';
+        allBtn.className = 'px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition';
+      }
+      renderCalendar();
+    };
+
+    window.changeMonth = function(delta) {
+      viewMonth += delta;
+      if (viewMonth > 11) {
+        viewMonth = 0;
+        viewYear++;
+      } else if (viewMonth < 0) {
+        viewMonth = 11;
+        viewYear--;
+      }
+      renderCalendar();
+    };
+
+    window.goToToday = function() {
+      const now = new Date();
+      viewYear = now.getFullYear();
+      viewMonth = now.getMonth();
+      renderCalendar();
+    };
+
+    window.openDayModal = function(dateKey) {
+      if (!currentUser) {
+        openProfileModal();
+        showToast('Nhập tên của bạn trước khi chọn ngày rảnh nhé!', '👋');
+        return;
+      }
+
+      activeDateKey = dateKey;
+      document.getElementById('dayModalTitle').textContent = formatVietnameseDate(dateKey);
+
+      const myEntry = groupData.availability?.[dateKey]?.[currentUser.id];
+      activeSlots = myEntry?.slots ? [...myEntry.slots] : ['Cả ngày'];
+      document.getElementById('dayNoteInput').value = myEntry?.note || '';
+
+      updateSlotButtonsUI();
+      renderDayAttendees(dateKey);
+
+      const modal = document.getElementById('dayModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    };
+
+    window.closeDayModal = function() {
+      const modal = document.getElementById('dayModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      activeDateKey = null;
+    };
+
+    window.toggleSlotSelection = function(slot) {
+      if (slot === 'Cả ngày') {
+        activeSlots = activeSlots.includes('Cả ngày') ? [] : ['Cả ngày'];
+      } else {
+        activeSlots = activeSlots.filter(s => s !== 'Cả ngày');
+        if (activeSlots.includes(slot)) {
+          activeSlots = activeSlots.filter(s => s !== slot);
+        } else {
+          activeSlots.push(slot);
+        }
+        if (activeSlots.length === 3) {
+          activeSlots = ['Cả ngày'];
+        }
+      }
+      updateSlotButtonsUI();
+    };
+
+    function updateSlotButtonsUI() {
+      document.querySelectorAll('.slot-btn').forEach(btn => {
+        const slot = btn.getAttribute('data-slot');
+        const active = activeSlots.includes(slot);
+        btn.className = active
+          ? 'slot-btn py-2 px-2 rounded-xl border border-orange-500 bg-orange-500 text-white text-xs font-extrabold shadow-xs transition'
+          : 'slot-btn py-2 px-2 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-orange-50 text-xs font-bold transition';
+      });
+    }
+
+    window.saveMyDayAvailability = function() {
+      if (!currentUser || !activeDateKey) return;
+      if (activeSlots.length === 0) {
+        clearMyDayAvailability();
+        return;
+      }
+
+      const note = document.getElementById('dayNoteInput').value.trim();
+      if (!groupData.availability[activeDateKey]) {
+        groupData.availability[activeDateKey] = {};
+      }
+      groupData.members[currentUser.id] = currentUser;
+      groupData.availability[activeDateKey][currentUser.id] = {
+        slots: [...activeSlots],
+        note
+      };
+
+      const savedDate = activeDateKey;
+      closeDayModal();
+      showToast('Đã cập nhật lịch rảnh của bạn!', '🗓️');
+
+      pushActionToServer('upsert_member', { member: currentUser });
+      pushActionToServer('set_availability', {
+        dateKey: savedDate,
+        memberId: currentUser.id,
+        slotData: { slots: [...activeSlots], note }
+      });
+    };
+
+    window.clearMyDayAvailability = function() {
+      if (!currentUser || !activeDateKey) return;
+      if (groupData.availability[activeDateKey]) {
+        delete groupData.availability[activeDateKey][currentUser.id];
+        if (Object.keys(groupData.availability[activeDateKey]).length === 0) {
+          delete groupData.availability[activeDateKey];
+        }
+      }
+      const clearedDate = activeDateKey;
+      closeDayModal();
+      showToast('Đã hủy đăng ký rảnh ngày này', '🗑️');
+      pushActionToServer('set_availability', {
+        dateKey: clearedDate,
+        memberId: currentUser.id,
+        slotData: null
+      });
+    };
+
+    function renderDayAttendees(dateKey) {
+      const container = document.getElementById('dayAttendeesList');
+      const dayMap = groupData.availability?.[dateKey] || {};
+      const entries = Object.entries(dayMap);
+      document.getElementById('dayFreeCount').textContent = entries.length;
+
+      if (entries.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 italic py-3 text-center bg-slate-50 rounded-xl">Chưa có ai đăng ký rảnh ngày này.</p>`;
+        return;
+      }
+
+      container.innerHTML = entries.map(([uid, info]) => {
+        const m = groupData.members[uid] || { name: 'Thành viên', avatar: '🙂', color: '#64748b' };
+        const slotsHtml = (info.slots || []).map(s => `<span class="text-[10px] font-bold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-md">${escapeHtml(s)}</span>`).join(' ');
+        return `
+          <div class="flex items-start justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+            <div class="flex items-center gap-2.5">
+              <span class="w-8 h-8 rounded-full flex items-center justify-center text-base shrink-0" style="background-color: ${m.color}20; border: 1.5px solid ${m.color}">
+                ${escapeHtml(m.avatar)}
+              </span>
+              <div>
+                <div class="text-xs font-extrabold text-slate-800">${escapeHtml(m.name)}</div>
+                ${info.note ? `<div class="text-[11px] text-slate-500 mt-0.5">“${escapeHtml(info.note)}”</div>` : ''}
+              </div>
+            </div>
+            <div class="flex flex-wrap justify-end gap-1 shrink-0">${slotsHtml}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ==========================================
+    // 6. HANGOUT IDEAS & VOTING
+    // ==========================================
+    window.openIdeaModal = function(prefillDate = '') {
+      if (!currentUser) {
+        openProfileModal();
+        showToast('Nhập tên của bạn trước khi thêm kèo nhé!', '👋');
+        return;
+      }
+      document.getElementById('ideaTitleInput').value = '';
+      document.getElementById('ideaLocationInput').value = '';
+      document.getElementById('ideaDateInput').value = prefillDate || '';
+      const modal = document.getElementById('ideaModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => document.getElementById('ideaTitleInput').focus(), 50);
+    };
+
+    window.closeIdeaModal = function() {
+      const modal = document.getElementById('ideaModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    };
+
+    window.submitNewIdea = function() {
+      if (!currentUser) return;
+      const title = document.getElementById('ideaTitleInput').value.trim();
+      const location = document.getElementById('ideaLocationInput').value.trim();
+      const dateKey = document.getElementById('ideaDateInput').value;
+
+      if (!title) {
+        showToast('Hãy nhập tên hoạt động / kèo đi chơi!', '⚠️');
+        return;
+      }
+
+      const id = 'idea_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const newIdea = {
+        id,
+        title,
+        location,
+        dateKey,
+        authorId: currentUser.id,
+        votes: { [currentUser.id]: true }
+      };
+
+      groupData.ideas[id] = newIdea;
+      closeIdeaModal();
+      showToast('Đã đăng đề xuất kèo mới!', '🎯');
+      pushActionToServer('add_idea', { idea: newIdea });
+    };
+
+    window.toggleIdeaVote = function(ideaId) {
+      if (!currentUser) {
+        openProfileModal();
+        showToast('Nhập tên của bạn để thả tim bình chọn nhé!', '❤️');
+        return;
+      }
+      const idea = groupData.ideas[ideaId];
+      if (!idea) return;
+      idea.votes = idea.votes || {};
+      if (idea.votes[currentUser.id]) {
+        delete idea.votes[currentUser.id];
+      } else {
+        idea.votes[currentUser.id] = true;
+      }
+      pushActionToServer('toggle_vote', { ideaId, memberId: currentUser.id });
+    };
+
+    window.deleteIdea = function(ideaId) {
+      delete groupData.ideas[ideaId];
+      showToast('Đã xóa đề xuất kèo', '🗑️');
+      pushActionToServer('delete_idea', { ideaId });
+    };
+
+    // ==========================================
+    // 7. RENDER FUNCTIONS
+    // ==========================================
+    function renderHeaderAndMembers() {
+      const banner = document.getElementById('welcomeBanner');
+      if (currentUser) {
+        document.getElementById('headerAvatar').textContent = currentUser.avatar;
+        document.getElementById('headerName').textContent = currentUser.name;
+        banner.classList.add('hidden');
+      } else {
+        document.getElementById('headerAvatar').textContent = '👋';
+        document.getElementById('headerName').textContent = 'Nhập tên bạn ▾';
+        banner.classList.remove('hidden');
+      }
+
+      const members = Object.values(groupData.members || {});
+      document.getElementById('memberCount').textContent = members.length;
+      const strip = document.getElementById('memberListStrip');
+
+      if (members.length === 0) {
+        strip.innerHTML = `<span class="text-slate-400 italic">Chưa có thành viên nào</span>`;
+      } else {
+        strip.innerHTML = members.map(m => `
+          <span class="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-full text-xs font-bold text-slate-700 shadow-2xs">
+            <span>${escapeHtml(m.avatar)}</span>
+            <span>${escapeHtml(m.name)}</span>
+          </span>
+        `).join('');
+      }
+    }
+
+    function renderCalendar() {
+      document.getElementById('calendarMonthTitle').textContent = `Tháng ${viewMonth + 1}, ${viewYear}`;
+      const grid = document.getElementById('calendarGrid');
+
+      const firstDay = new Date(viewYear, viewMonth, 1).getDay(); // 0=Sun..6=Sat
+      const startOffset = (firstDay + 6) % 7; // Monday = 0
+      const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+
+      const totalMembers = Math.max(Object.keys(groupData.members || {}).length, 1);
+      const todayKey = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
+
+      // Find max free count in this month to highlight golden days
+      let maxCountInMonth = 0;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dk = formatDateKey(viewYear, viewMonth, d);
+        const cnt = Object.keys(groupData.availability?.[dk] || {}).length;
+        if (cnt > maxCountInMonth) maxCountInMonth = cnt;
+      }
+
+      let html = '';
+      for (let i = 0; i < startOffset; i++) {
+        html += `<div class="empty-cell h-20 sm:h-24 rounded-2xl bg-slate-50/50"></div>`;
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dk = formatDateKey(viewYear, viewMonth, d);
+        const dayAvail = groupData.availability?.[dk] || {};
+        const freeUserIds = Object.keys(dayAvail);
+        const isMine = currentUser && Boolean(dayAvail[currentUser.id]);
+
+        if (calendarFilter === 'mine' && !isMine) {
+          html += `
+            <button onclick="openDayModal('${dk}')" class="calendar-cell h-20 sm:h-24 rounded-2xl border border-slate-100 bg-slate-50/40 p-2 flex flex-col justify-between text-left opacity-45 hover:opacity-90">
+              <span class="text-xs font-bold text-slate-400">${d}</span>
+            </button>
+          `;
+          continue;
+        }
+
+        const count = freeUserIds.length;
+        const isToday = dk === todayKey;
+        const isGolden = count >= 2 && count === maxCountInMonth;
+
+        let cellStyle = 'bg-white border-slate-200/80 hover:border-orange-300';
+        if (isGolden) {
+          cellStyle = 'golden-glow border-2';
+        } else if (count >= 3 || (count >= 2 && count / totalMembers >= 0.6)) {
+          cellStyle = 'bg-amber-50/90 border-amber-300';
+        } else if (count === 2) {
+          cellStyle = 'bg-orange-50/80 border-orange-200';
+        } else if (count === 1) {
+          cellStyle = 'bg-orange-50/40 border-orange-100';
+        }
+
+        const avatarsHtml = freeUserIds.slice(0, 4).map(uid => {
+          const m = groupData.members[uid];
+          return `<span class="text-xs sm:text-sm leading-none" title="${escapeHtml(m?.name || '')}">${escapeHtml(m?.avatar || '🙂')}</span>`;
+        }).join('');
+
+        const extraBadge = count > 4 ? `<span class="text-[10px] font-extrabold text-orange-600">+${count - 4}</span>` : '';
+
+        html += `
+          <button onclick="openDayModal('${dk}')" class="calendar-cell h-20 sm:h-24 rounded-2xl border ${cellStyle} ${isToday ? 'ring-2 ring-orange-500 ring-offset-1' : ''} p-1.5 sm:p-2 flex flex-col justify-between text-left relative">
+            <div class="flex items-center justify-between w-full">
+              <span class="text-xs sm:text-sm font-extrabold ${isToday ? 'text-orange-600' : 'text-slate-800'}">${d}</span>
+              <div class="flex items-center gap-1">
+                ${isGolden ? '<span class="text-[10px]" title="Ngày Vàng">🔥</span>' : ''}
+                ${isMine ? '<span class="w-2 h-2 rounded-full bg-emerald-500" title="Bạn rảnh ngày này"></span>' : ''}
+              </div>
+            </div>
+
+            <div class="w-full">
+              ${count > 0 ? `
+                <div class="flex items-center flex-wrap gap-0.5 mb-0.5">${avatarsHtml}${extraBadge}</div>
+                <div class="text-[10px] font-bold ${isGolden ? 'text-amber-700' : 'text-slate-500'}">${count} người rảnh</div>
+              ` : ''}
+            </div>
+          </button>
+        `;
+      }
+
+      grid.innerHTML = html;
+    }
+
+    function renderGoldenDays() {
+      const container = document.getElementById('goldenDaysList');
+      const todayKey = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
+      const allMembers = Object.values(groupData.members || {});
+      const totalMembers = allMembers.length;
+
+      const ranked = Object.entries(groupData.availability || {})
+        .filter(([dk, users]) => dk >= todayKey && Object.keys(users).length > 0)
+        .map(([dk, users]) => {
+          const userIds = Object.keys(users);
+          // Find overlapping slots
+          const slotCounts = {};
+          userIds.forEach(uid => {
+            const sList = users[uid].slots || [];
+            if (sList.includes('Cả ngày')) {
+              ['Sáng', 'Chiều', 'Tối'].forEach(s => slotCounts[s] = (slotCounts[s] || 0) + 1);
+            } else {
+              sList.forEach(s => slotCounts[s] = (slotCounts[s] || 0) + 1);
+            }
+          });
+          const bestSlots = Object.entries(slotCounts)
+            .filter(([_, c]) => c === userIds.length)
+            .map(([s]) => s);
+
+          return {
+            dateKey: dk,
+            count: userIds.length,
+            userIds,
+            commonSlotText: bestSlots.length === 3 ? 'Cả ngày' : (bestSlots.length > 0 ? bestSlots.join(', ') : 'Linh hoạt giờ')
+          };
+        })
+        .sort((a, b) => b.count - a.count || a.dateKey.localeCompare(b.dateKey))
+        .slice(0, 5);
+
+      if (ranked.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-7 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <div class="text-2xl mb-1">📅</div>
+            <p class="text-xs font-bold text-slate-600">Chưa có lịch rảnh sắp tới nào</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Hãy bấm vào các ngày trên lịch để hệ thống tìm Ngày Vàng cho hội!</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = ranked.map((item, idx) => {
+        const isTop = idx === 0;
+        const pct = totalMembers > 0 ? Math.round((item.count / totalMembers) * 100) : 100;
+        const avatars = item.userIds.map(uid => {
+          const m = groupData.members[uid];
+          return `<span title="${escapeHtml(m?.name || '')}">${escapeHtml(m?.avatar || '🙂')}</span>`;
+        }).join(' ');
+
+        return `
+          <div class="p-3 rounded-2xl border ${isTop ? 'golden-glow' : 'bg-slate-50/70 border-slate-200/80'} flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-xs font-extrabold ${isTop ? 'text-amber-700' : 'text-slate-600'}">#${idx + 1}</span>
+                <button onclick="openDayModal('${item.dateKey}')" class="text-xs sm:text-sm font-extrabold text-slate-900 hover:text-orange-600 truncate">
+                  ${formatVietnameseDate(item.dateKey)}
+                </button>
+              </div>
+              <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-600 flex-wrap">
+                <span class="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  ${item.count}/${Math.max(totalMembers, item.count)} người (${pct}%)
+                </span>
+                <span class="text-slate-500">⏰ ${item.commonSlotText}</span>
+              </div>
+              <div class="mt-1.5 text-sm tracking-wide">${avatars}</div>
+            </div>
+
+            <button onclick="openIdeaModal('${item.dateKey}')" class="shrink-0 bg-white hover:bg-orange-50 text-orange-600 border border-orange-200 text-[11px] font-extrabold px-2.5 py-2 rounded-xl transition">
+              Chốt kèo →
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderIdeas() {
+      const container = document.getElementById('ideasList');
+      const ideas = Object.values(groupData.ideas || {})
+        .sort((a, b) => Object.keys(b.votes || {}).length - Object.keys(a.votes || {}).length || (b.createdAt || 0) - (a.createdAt || 0));
+
+      if (ideas.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-7 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+            <div class="text-2xl mb-1">🍕</div>
+            <p class="text-xs font-bold text-slate-600">Chưa có ý tưởng đi chơi nào</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Bấm "+ Thêm kèo" để rủ hội đi ăn nướng, cà phê hoặc phượt cuối tuần!</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = ideas.map(idea => {
+        const voteIds = Object.keys(idea.votes || {});
+        const hasVoted = currentUser && Boolean(idea.votes?.[currentUser.id]);
+        const isAuthor = currentUser && idea.authorId === currentUser.id;
+        const author = groupData.members[idea.authorId];
+
+        return `
+          <div class="p-3.5 rounded-2xl border border-slate-200/90 bg-slate-50/50 hover:bg-white transition flex items-start justify-between gap-3">
+            <div class="min-w-0 space-y-1">
+              <div class="font-extrabold text-sm text-slate-900">${escapeHtml(idea.title)}</div>
+              ${idea.location ? `<div class="text-xs text-slate-600">📍 ${escapeHtml(idea.location)}</div>` : ''}
+              <div class="flex items-center gap-2 flex-wrap pt-0.5 text-[11px] text-slate-500">
+                ${idea.dateKey ? `<span class="bg-amber-50 text-amber-700 border border-amber-200 font-bold px-2 py-0.5 rounded-md">🗓️ ${formatVietnameseDate(idea.dateKey)}</span>` : ''}
+                <span>Đề xuất bởi <strong>${escapeHtml(author?.name || 'Thành viên')}</strong></span>
+                ${isAuthor ? `<button onclick="deleteIdea('${idea.id}')" class="text-rose-500 hover:underline font-semibold">Xóa</button>` : ''}
+              </div>
+            </div>
+
+            <button onclick="toggleIdeaVote('${idea.id}')" class="shrink-0 flex flex-col items-center justify-center min-w-[54px] py-2 px-2.5 rounded-2xl border transition ${hasVoted ? 'bg-rose-50 border-rose-300 text-rose-600 shadow-2xs' : 'bg-white border-slate-200 text-slate-600 hover:border-rose-200'}">
+              <span class="text-base leading-none">${hasVoted ? '❤️' : '🤍'}</span>
+              <span class="text-xs font-extrabold mt-1">${voteIds.length}</span>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderAll() {
+      renderHeaderAndMembers();
+      renderCalendar();
+      renderGoldenDays();
+      renderIdeas();
+    }
+
+    // ==========================================
+    // 8. INITIALIZATION & AUTO POLLING
+    // ==========================================
+    syncUrlGroupParam();
+    loadLocalFallback();
+    renderAll();
+    fetchGroupFromServer();
+
+    // Poll every 4 seconds for real-time updates from friends
+    setInterval(() => {
+      if (!document.hidden) {
+        fetchGroupFromServer();
+      }
+    }, 4000);
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        fetchGroupFromServer();
+      }
+    });
+  </script>
+</body>
+</html>

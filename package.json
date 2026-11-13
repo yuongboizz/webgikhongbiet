@@ -1,0 +1,10 @@
+{
+  "name": "chot-keo-di-choi",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Web dang ky lich ranh va chot keo di choi cho hoi ban than - chay tron goi tren Netlify",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}
