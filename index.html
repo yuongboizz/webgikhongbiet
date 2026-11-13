@@ -889,30 +889,28 @@
             updatedAt: Date.now()
           }, { merge: true });
         } else if (action === 'admin_delete_member') {
-          const updates = {
-            [`members.${payload.memberId}`]: deleteField(),
+          const deletePayload = {
+            members: { [payload.memberId]: deleteField() },
             updatedAt: Date.now()
           };
-          for (const dk of Object.keys(groupData.availability || {})) {
-            updates[`availability.${dk}.${payload.memberId}`] = deleteField();
+          if (payload.affectedDates?.length) {
+            deletePayload.availability = {};
+            for (const dk of payload.affectedDates) {
+              if (payload.emptiedDates?.includes(dk)) {
+                deletePayload.availability[dk] = deleteField();
+              } else {
+                deletePayload.availability[dk] = { [payload.memberId]: deleteField() };
+              }
+            }
           }
-          for (const ideaId of Object.keys(groupData.ideas || {})) {
-            updates[`ideas.${ideaId}.votes.${payload.memberId}`] = deleteField();
+          if (payload.affectedIdeas?.length) {
+            deletePayload.ideas = {};
+            for (const ideaId of payload.affectedIdeas) {
+              deletePayload.ideas[ideaId] = { votes: { [payload.memberId]: deleteField() } };
+            }
           }
-          await updateDoc(groupRef, updates);
-        } else if (action === 'admin_change_pin') {
-          await setDoc(groupRef, {
-            adminPin: payload.newPin,
-            updatedAt: Date.now()
-          }, { merge: true });
+          await setDoc(groupRef, deletePayload, { merge: true });
         }
-        return true;
-      } catch (err) {
-        console.error('Firestore write error:', err);
-        updateSyncStatus(false, `Lỗi ghi Firebase (${err.code || 'mạng'})`);
-        return true;
-      }
-    }
 
     // ==========================================
     // 5. CUSTOM AVATAR UPLOAD & IMAGE COMPRESSION
@@ -1170,157 +1168,130 @@
         }
       }
 
-      renderAdminMembersList();
-      showToast(`Đã xóa thành viên "${m.name}" và dọn sạch lịch của họ!`, '🧹');
-      await pushActionToFirebase('admin_delete_member', { memberId });
-    };
+      function renderAdminMembersList() {
+      const container = document.getElementById('adminMembersList');
+      const memberEntries = Object.entries(groupData.members || {});
+      document.getElementById('adminMemberCount').textContent = memberEntries.length;
 
-    window.adminClearAllIdeas = async function() {
-      if (!isAdmin) return;
-      if (!confirm('Xóa toàn bộ danh sách kèo đề xuất hiện tại?')) return;
-      groupData.ideas = {};
-      showToast('Đã xóa sạch toàn bộ đề xuất kèo!', '🧹');
-      await pushActionToFirebase('admin_clear_all_ideas', {});
-    };
-
-    window.adminChangePin = async function() {
-      if (!isAdmin) return;
-      const newPin = document.getElementById('adminNewPinInput').value.trim();
-      if (newPin.length < 4) {
-        showToast('Mã PIN mới cần tối thiểu 4 ký tự!', '⚠️');
+      if (memberEntries.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 italic py-4 text-center bg-slate-50 rounded-xl">Chưa có thành viên nào trong nhóm.</p>`;
         return;
       }
-      await pushActionToFirebase('admin_change_pin', { newPin });
-      adminPin = newPin;
-      groupData.adminPin = newPin;
-      localStorage.setItem(`ck_admin_pin_${currentGroup}`, newPin);
-      localStorage.setItem(`ck_local_admin_pin_${currentGroup}`, newPin);
-      document.getElementById('adminNewPinInput').value = '';
-      showToast('Đã cập nhật mã PIN Admin mới!', '🔐');
-    };
 
-    // ==========================================
-    // 7. USER PROFILE & GROUP ACTIONS
-    // ==========================================
-    function initPickers() {
-      const avatarContainer = document.getElementById('avatarPicker');
-      avatarContainer.innerHTML = AVATARS.map(av => `
-        <button type="button" onclick="selectAvatar('${av}')" class="avatar-opt text-xl p-1.5 rounded-xl border transition ${av === selectedAvatar ? 'border-orange-500 bg-orange-50 scale-105' : 'border-slate-200 hover:bg-slate-50'}">
-          ${av}
-        </button>
-      `).join('');
+      container.innerHTML = memberEntries.map(([uid, m]) => {
+        if (!m) return '';
+        let freeDaysCount = 0;
+        Object.values(groupData.availability || {}).forEach(dayMap => {
+          if (dayMap && dayMap[uid]) freeDaysCount++;
+        });
 
-      const colorContainer = document.getElementById('colorPicker');
-      colorContainer.innerHTML = COLORS.map(c => `
-        <button type="button" onclick="selectColor('${c}')" style="background-color: ${c}" class="color-opt w-7 h-7 rounded-full transition ${c === selectedColor ? 'ring-2 ring-offset-2 ring-slate-800 scale-110' : 'opacity-80 hover:opacity-100'}"></button>
-      `).join('');
+        const avHtml = isImageAvatar(m.avatar)
+          ? renderAvatarHtml(m.avatar, 'w-8 h-8', 'text-base', m.color)
+          : `<span class="w-8 h-8 rounded-full flex items-center justify-center text-base shrink-0" style="background-color: ${m.color || '#f97316'}20; border: 1.5px solid ${m.color || '#f97316'}">${escapeHtml(m.avatar || '🙂')}</span>`;
+
+        return `
+          <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
+            <div class="flex items-center gap-2.5 min-w-0">
+              ${avHtml}
+              <div class="min-w-0">
+                <div class="text-xs font-extrabold text-slate-800 truncate">${escapeHtml(m.name || 'Thành viên')}</div>
+                <div class="text-[10px] text-slate-500">Đã đăng ký ${freeDaysCount} ngày rảnh</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" onclick="adminPromptRenameMember('${uid}')" class="bg-white hover:bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition">
+                ✏️ Sửa tên
+              </button>
+              <button type="button" data-confirm="0" onclick="adminDeleteMember('${uid}', this)" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition">
+                🗑️ Xóa nick
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
-    window.selectAvatar = function(av) {
-      selectedAvatar = av;
-      updateAvatarPreviewBox();
-      initPickers();
+    window.adminPromptRenameMember = async function(memberId) {
+      const m = groupData.members?.[memberId];
+      if (!m || !isAdmin) return;
+      const newName = prompt(`Nhập tên mới cho thành viên "${m.name}":`, m.name);
+      if (!newName || !newName.trim() || newName.trim() === m.name) return;
+
+      const trimmed = newName.trim().slice(0, 30);
+      groupData.members[memberId].name = trimmed;
+      if (currentUser && currentUser.id === memberId) {
+        currentUser.name = trimmed;
+        localStorage.setItem('ck_user_profile', JSON.stringify(currentUser));
+      }
+      renderAdminMembersList();
+      showToast(`Đã đổi tên thành "${trimmed}"`, '👑');
+      await pushActionToFirebase('admin_edit_member', { memberId, name: trimmed });
     };
 
-    window.selectColor = function(c) {
-      selectedColor = c;
-      initPickers();
-    };
+    window.adminDeleteMember = async function(memberId, btnEl) {
+      if (!isAdmin) {
+        showToast('Bạn cần mở khóa quyền Admin trước!', '⚠️');
+        return;
+      }
+      const m = groupData.members?.[memberId];
+      if (!m) return;
 
-    window.openProfileModal = function() {
-      document.getElementById('profileNameInput').value = currentUser?.name || '';
-      selectedAvatar = currentUser?.avatar || '😎';
-      selectedColor = currentUser?.color || '#f97316';
-      document.getElementById('avatarFileInput').value = '';
-      updateAvatarPreviewBox();
-      initPickers();
-      const modal = document.getElementById('profileModal');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-      setTimeout(() => document.getElementById('profileNameInput').focus(), 50);
-    };
-
-    window.closeProfileModal = function() {
-      const modal = document.getElementById('profileModal');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-    };
-
-    window.saveUserProfile = function() {
-      const rawName = document.getElementById('profileNameInput').value.trim();
-      if (!rawName) {
-        showToast('Bạn hãy nhập tên hiển thị nhé!', '⚠️');
+      // Xác nhận 2 lần bấm trực tiếp trên nút (không dùng popup confirm dễ bị chặn)
+      if (btnEl && btnEl.dataset.confirm !== '1') {
+        btnEl.dataset.confirm = '1';
+        btnEl.textContent = '⚠️ Bấm lại để xóa';
+        btnEl.className = 'bg-rose-600 text-white border border-rose-700 text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg transition';
+        setTimeout(() => {
+          if (btnEl && btnEl.isConnected) {
+            btnEl.dataset.confirm = '0';
+            btnEl.textContent = '🗑️ Xóa nick';
+            btnEl.className = 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition';
+          }
+        }, 3500);
         return;
       }
 
-      const id = currentUser?.id || ('u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36));
-      currentUser = {
-        id,
-        name: rawName,
-        avatar: selectedAvatar,
-        color: selectedColor
-      };
+      const deletedName = m.name || 'thành viên';
 
-      localStorage.setItem('ck_user_profile', JSON.stringify(currentUser));
-      groupData.members[id] = currentUser;
-      closeProfileModal();
-      showToast(`Chào ${rawName}! Hồ sơ & ảnh đại diện đã lưu 🎉`);
-      pushActionToFirebase('upsert_member', { member: currentUser });
-    };
+      // Nếu Admin xóa chính nick đang dùng trên máy này thì xóa luôn bộ nhớ máy để không tự tạo lại
+      if (currentUser && currentUser.id === memberId) {
+        currentUser = null;
+        localStorage.removeItem('ck_user_profile');
+      }
 
-    window.copyInviteLink = function() {
-      const url = new URL(window.location.href);
-      url.searchParams.set('group', currentGroup);
-      navigator.clipboard.writeText(url.toString()).then(() => {
-        showToast(`Đã copy link mời nhóm ${currentGroup}!`, '🔗');
-      }).catch(() => {
-        prompt('Copy đường link dưới đây để gửi cho hội bạn:', url.toString());
+      delete groupData.members[memberId];
+      const affectedDates = [];
+      const emptiedDates = [];
+
+      for (const dk of Object.keys(groupData.availability || {})) {
+        if (groupData.availability[dk]?.[memberId]) {
+          affectedDates.push(dk);
+          delete groupData.availability[dk][memberId];
+          if (Object.keys(groupData.availability[dk]).length === 0) {
+            emptiedDates.push(dk);
+            delete groupData.availability[dk];
+          }
+        }
+      }
+
+      const affectedIdeas = [];
+      for (const ideaId of Object.keys(groupData.ideas || {})) {
+        if (groupData.ideas[ideaId]?.votes?.[memberId]) {
+          affectedIdeas.push(ideaId);
+          delete groupData.ideas[ideaId].votes[memberId];
+        }
+      }
+
+      renderAdminMembersList();
+      renderAll();
+      showToast(`Đã xóa thành viên "${deletedName}" và dọn sạch lịch của họ!`, '🧹');
+
+      await pushActionToFirebase('admin_delete_member', {
+        memberId,
+        affectedDates,
+        emptiedDates,
+        affectedIdeas
       });
-    };
-
-    window.createNewRandomGroup = function() {
-      const prefixes = ['HOIBAN', 'TEAMCHILL', 'KEOVUI', 'DICHOI', 'GANG'];
-      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-      const num = Math.floor(100 + Math.random() * 900);
-      currentGroup = `${prefix}${num}`;
-      groupData = { members: {}, availability: {}, ideas: {}, adminPin: '', updatedAt: 0 };
-      serverHasAdmin = false;
-      syncUrlGroupParam();
-
-      if (currentUser) {
-        groupData.members[currentUser.id] = currentUser;
-        pushActionToFirebase('upsert_member', { member: currentUser });
-      }
-      showToast(`Đã tạo phòng nhóm mới: ${currentGroup}`, '✨');
-    };
-
-    window.openGroupModal = function() {
-      document.getElementById('groupCodeInput').value = currentGroup;
-      const modal = document.getElementById('groupModal');
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-    };
-
-    window.closeGroupModal = function() {
-      const modal = document.getElementById('groupModal');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-    };
-
-    window.applyGroupCode = function() {
-      const code = document.getElementById('groupCodeInput').value
-        .trim()
-        .toUpperCase()
-        .replace(/[^A-Z0-9_-]/g, '');
-      if (!code) {
-        showToast('Vui lòng nhập mã nhóm hợp lệ!', '⚠️');
-        return;
-      }
-      currentGroup = code;
-      groupData = { members: {}, availability: {}, ideas: {}, adminPin: '', updatedAt: 0 };
-      syncUrlGroupParam();
-      closeGroupModal();
-      showToast(`Đã chuyển sang nhóm ${currentGroup}`, '🚀');
     };
 
     // ==========================================
