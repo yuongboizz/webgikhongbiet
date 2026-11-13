@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" class="dark-theme">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,8 +11,18 @@
   <style>
     body {
       font-family: 'Be Vietnam Pro', sans-serif;
-      background-color: #faf9f6 !important;
+      background-color: #faf9f6;
       color: #1e293b;
+    }
+    /* Chế độ nền tối & giữ nguyên màu gốc của ảnh đại diện */
+    html.dark-theme {
+      filter: invert(1) hue-rotate(180deg);
+      background-color: #121212;
+    }
+    html.dark-theme img,
+    html.dark-theme video,
+    html.dark-theme .no-invert {
+      filter: invert(1) hue-rotate(180deg);
     }
     .calendar-cell {
       transition: all 0.16s cubic-bezier(0.4, 0, 0.2, 1);
@@ -33,31 +43,35 @@
     .modal-animate {
       animation: popIn 0.2s ease-out forwards;
     }
+    #theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      background: #1e293b;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    @media (max-width: 1280px) {
+      #theme-toggle {
+        top: 68px;
+        right: 14px;
+      }
+    }
   </style>
 </head>
-  <button id="theme-toggle" style="position:fixed;bottom:20px;right:20px;z-index:9999;padding:10px 14px;border-radius:8px;border:1px solid #555;background:#222;color:#fff;cursor:pointer;">
-  🌓 Sáng / Tối
-</button>
-
-<script>
-  const btn = document.getElementById('theme-toggle');
-  let isDark = true; // Mặc định mở web lên là nền tối
-
-  function applyTheme() {
-    document.documentElement.style.filter = isDark ? 'invert(1) hue-rotate(180deg)' : 'none';
-    // Giữ nguyên màu gốc cho hình ảnh/video để không bị âm bản
-    document.querySelectorAll('img, video').forEach(el => {
-      el.style.filter = isDark ? 'invert(1) hue-rotate(180deg)' : 'none';
-    });
-  }
-
-  applyTheme();
-  btn.addEventListener('click', () => {
-    isDark = !isDark;
-    applyTheme();
-  });
-</script>
 <body class="min-h-screen flex flex-col">
+
+  <!-- Nút chuyển Sáng / Tối ở góc trên bên phải -->
+  <button id="theme-toggle" title="Đổi giao diện Sáng / Tối">
+    🌓 Sáng / Tối
+  </button>
 
   <!-- Top Header -->
   <header class="bg-white/95 backdrop-blur border-b border-orange-100 sticky top-0 z-30">
@@ -72,10 +86,10 @@
             <h1 class="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900">Chốt Kèo Đi Chơi</h1>
             <span id="syncBadge" class="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
               <span id="syncDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-              <span id="syncText">Đang kết nối Netlify...</span>
+              <span id="syncText">Đang kết nối Firebase...</span>
             </span>
           </div>
-          <p class="text-xs text-slate-500 hidden sm:block">Mở link là dùng ngay — Đồng bộ tốc độ cao 1s & săn Ngày Vàng cho hội bạn</p>
+          <p class="text-xs text-slate-500 hidden sm:block">Đăng ký ảnh đại diện & đồng bộ lịch rảnh tức thì cho cả hội</p>
         </div>
       </div>
 
@@ -98,10 +112,10 @@
         </div>
 
         <button onclick="openProfileModal()" id="profileButton" class="flex items-center gap-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-xl transition">
-          <span id="headerAvatar" class="text-lg">👋</span>
+          <span id="headerAvatar" class="flex items-center justify-center text-lg">👋</span>
           <div class="text-left">
             <span class="block text-[10px] text-slate-500 leading-none">Bạn là</span>
-            <span id="headerName" class="text-xs font-bold text-slate-800">Nhập tên bạn ▾</span>
+            <span id="headerName" class="text-xs font-bold text-slate-800">Đăng ký / Nhập tên ▾</span>
           </div>
         </button>
 
@@ -113,7 +127,7 @@
       </div>
     </div>
 
-    <!-- Admin Active Bar (Visible only when Admin is unlocked) -->
+    <!-- Admin Active Bar -->
     <div id="adminActiveBar" class="hidden bg-amber-900 text-amber-50 border-t border-amber-700">
       <div class="max-w-6xl mx-auto px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs">
         <div class="flex items-center gap-2">
@@ -145,7 +159,7 @@
             👑 Quản lý thành viên
           </button>
           <button onclick="openProfileModal()" class="text-xs font-bold text-orange-600 hover:text-orange-700">
-            + Thêm / Sửa tên
+            + Đăng ký / Đổi ảnh đại diện
           </button>
         </div>
       </div>
@@ -159,15 +173,15 @@
     <div id="welcomeBanner" class="bg-gradient-to-r from-orange-500 via-amber-500 to-orange-400 rounded-2xl p-4 sm:p-5 text-white shadow-lg shadow-orange-200/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div class="flex items-center gap-3.5">
         <div class="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-2xl shrink-0">
-          ✨
+          📸
         </div>
         <div>
           <h2 class="font-extrabold text-base sm:text-lg">Chào mừng bạn tới hội!</h2>
-          <p class="text-xs sm:text-sm text-orange-50">Chọn tên hiển thị & biểu tượng đại diện để bắt đầu đánh dấu ngày rảnh của bạn nhé.</p>
+          <p class="text-xs sm:text-sm text-orange-50">Đăng ký tên hiển thị và tải ảnh đại diện của chính bạn lên để hội dễ nhận ra nhé.</p>
         </div>
       </div>
       <button onclick="openProfileModal()" class="bg-white text-orange-600 hover:bg-orange-50 font-extrabold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-sm transition shrink-0">
-        Chọn tên của tôi ngay →
+        Đăng ký hồ sơ của tôi →
       </button>
     </div>
 
@@ -188,7 +202,6 @@
           </div>
 
           <div class="flex items-center gap-2">
-            <!-- Filter Pills -->
             <div class="bg-slate-100 p-1 rounded-xl flex text-xs font-bold">
               <button id="filterAllBtn" onclick="setCalendarFilter('all')" class="px-2.5 py-1 rounded-lg bg-white text-slate-900 shadow-sm transition">
                 Tất cả mọi người
@@ -198,7 +211,6 @@
               </button>
             </div>
 
-            <!-- Month Nav -->
             <div class="flex items-center gap-1">
               <button onclick="changeMonth(-1)" class="w-8 h-8 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center font-bold text-slate-600 transition" title="Tháng trước">
                 ‹
@@ -296,41 +308,63 @@
     </div>
   </main>
 
-  <!-- MODAL 1: User Profile -->
+  <!-- MODAL 1: User Registration & Custom Photo Avatar -->
   <div id="profileModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl modal-animate">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="font-extrabold text-lg text-slate-900">Hồ sơ của bạn trong hội</h3>
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl modal-animate max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-extrabold text-lg text-slate-900">Đăng ký hồ sơ thành viên</h3>
         <button onclick="closeProfileModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center">✕</button>
       </div>
 
       <div class="space-y-4">
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5">Tên hiển thị / Biệt danh</label>
-          <input id="profileNameInput" type="text" maxlength="25" placeholder="Ví dụ: Minh Béo, Linh Xinh, Tuấn..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none text-sm font-semibold" />
+        <!-- Upload Custom Avatar Photo -->
+        <div class="flex flex-col items-center bg-orange-50/60 border border-orange-200/80 rounded-2xl p-4">
+          <label for="avatarFileInput" class="relative cursor-pointer group">
+            <div id="avatarPreviewBox" class="w-24 h-24 rounded-full overflow-hidden border-4 border-orange-400 bg-white shadow-md flex items-center justify-center group-hover:opacity-90 transition">
+              <span class="text-4xl">📷</span>
+            </div>
+            <span class="absolute bottom-0 right-0 bg-orange-500 text-white text-xs font-extrabold px-2.5 py-1 rounded-full shadow-md border-2 border-white">
+              📸 Tải ảnh
+            </span>
+          </label>
+
+          <input type="file" id="avatarFileInput" accept="image/*" class="hidden" onchange="handleAvatarFileUpload(event)" />
+
+          <div class="mt-2.5 flex items-center gap-2">
+            <button type="button" onclick="document.getElementById('avatarFileInput').click()" class="bg-white hover:bg-orange-100 text-orange-600 border border-orange-200 text-xs font-extrabold px-3 py-1.5 rounded-xl shadow-2xs transition">
+              Chọn ảnh từ thư viện / máy
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-500 mt-1.5 text-center">Ảnh tự động cắt vuông & nén nhẹ để hiển thị sắc nét cho cả hội</p>
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5">Chọn biểu tượng đại diện</label>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Tên hiển thị / Biệt danh *</label>
+          <input id="profileNameInput" type="text" maxlength="25" placeholder="Ví dụ: Minh Béo, Linh Xinh, Tuấn..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none text-sm font-semibold" />
+        </div>
+
+        <!-- Optional Fallback Icons -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 mb-1.5">Hoặc chọn nhanh biểu tượng (nếu chưa có ảnh)</label>
           <div id="avatarPicker" class="grid grid-cols-8 gap-1.5"></div>
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5">Màu thẻ nhận diện</label>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Màu viền nhận diện</label>
           <div id="colorPicker" class="flex items-center gap-2 flex-wrap"></div>
         </div>
 
         <div class="pt-2 flex justify-end gap-2">
           <button onclick="closeProfileModal()" class="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Đóng</button>
           <button onclick="saveUserProfile()" class="px-5 py-2.5 rounded-xl text-xs font-extrabold bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-200">
-            Lưu hồ sơ
+            Lưu & Tham gia hội ✓
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL 2: Day Availability (With Admin Edit/Delete Support) -->
+  <!-- MODAL 2: Day Availability -->
   <div id="dayModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl modal-animate max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between mb-1">
@@ -392,7 +426,7 @@
       </div>
       <p class="text-xs text-slate-500 mb-4">Nhập mã nhóm của hội bạn (viết liền không dấu). Mỗi mã nhóm có lịch rảnh và danh sách kèo riêng biệt.</p>
 
-      <input id="groupCodeInput" type="text" maxlength="24" placeholder="VD: HOIBANTHAN, TEAMCHILL..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-orange-500 outline-none text-sm font-extrabold uppercase tracking-wider mb-4" />
+      <input id="groupCodeInput" type="text" maxlength="24" placeholder="VD: GANG949, HOIBANTHAN..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-orange-500 outline-none text-sm font-extrabold uppercase tracking-wider mb-4" />
 
       <div class="flex justify-end gap-2">
         <button onclick="closeGroupModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Hủy</button>
@@ -525,14 +559,62 @@
     <span id="toastMsg">Đã lưu!</span>
   </div>
 
+  <!-- Dark/Light Theme Script -->
   <script>
+    const themeBtn = document.getElementById('theme-toggle');
+    let isDark = localStorage.getItem('ck_dark_mode') !== 'false'; // Mặc định mở web lên là nền tối
+
+    function applyTheme() {
+      if (isDark) {
+        document.documentElement.classList.add('dark-theme');
+      } else {
+        document.documentElement.classList.remove('dark-theme');
+      }
+      localStorage.setItem('ck_dark_mode', isDark ? 'true' : 'false');
+    }
+
+    applyTheme();
+    themeBtn.addEventListener('click', () => {
+      isDark = !isDark;
+      applyTheme();
+    });
+  </script>
+
+  <!-- Main App + Firebase Firestore Realtime Sync -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      updateDoc,
+      onSnapshot,
+      deleteField
+    } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+
     // ==========================================
-    // 1. STATE & CONSTANTS
+    // 1. FIREBASE CONFIGURATION
+    // ==========================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyCgEnkrz8cLa7n6s5qXAcxAMav-y-UnFH0",
+      authDomain: "webgikhongbiet.firebaseapp.com",
+      projectId: "webgikhongbiet",
+      storageBucket: "webgikhongbiet.firebasestorage.app",
+      messagingSenderId: "150493427843",
+      appId: "1:150493427843:web:983fc6c6539e10453a83b6",
+      measurementId: "G-SF2226BQFQ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ==========================================
+    // 2. STATE & CONSTANTS
     // ==========================================
     const AVATARS = ['😎', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐸', '🐙', '🦄', '🐝', '🐣', '🍕', '🧋', '🎸', '🚀'];
     const COLORS = ['#f97316', '#ef4444', '#ec4899', '#8b5cf6', '#3b82f6', '#06b6d4', '#10b981', '#eab308'];
     const VN_DAYS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
-    const FAST_POLL_INTERVAL_MS = 1000;
 
     const urlParams = new URLSearchParams(window.location.search);
     let currentGroup = (urlParams.get('group') || localStorage.getItem('ck_last_group') || 'HOIBANTHAN')
@@ -548,6 +630,7 @@
       members: {},
       availability: {},
       ideas: {},
+      adminPin: '',
       updatedAt: 0
     };
 
@@ -565,208 +648,24 @@
     let activeDateKey = null;
     let activeSlots = [];
     let isCloudConnected = false;
+    let unsubscribeGroupSnapshot = null;
 
     // ==========================================
-    // 2. FAST DELTA SYNC ENGINE (1s POLL + BROADCASTCHANNEL)
+    // 3. HELPER FUNCTIONS & AVATAR RENDERER
     // ==========================================
-    let lastKnownUpdatedAt = 0;
-    let isFetching = false;
-    let activeMutationsCount = 0;
-    let pollTimerId = null;
-    let broadcastChannel = null;
-
-    function setupBroadcastChannel() {
-      if (broadcastChannel) {
-        try { broadcastChannel.close(); } catch (e) {}
-      }
-      if ('BroadcastChannel' in window) {
-        broadcastChannel = new BroadcastChannel(`chot_keo_sync_${currentGroup}`);
-        broadcastChannel.onmessage = (event) => {
-          const msg = event.data;
-          if (msg && msg.group === currentGroup && msg.data) {
-            groupData = {
-              members: msg.data.members || {},
-              availability: msg.data.availability || {},
-              ideas: msg.data.ideas || {},
-              updatedAt: msg.data.updatedAt || Date.now()
-            };
-            if (typeof msg.hasAdmin === 'boolean') serverHasAdmin = msg.hasAdmin;
-            lastKnownUpdatedAt = Math.max(lastKnownUpdatedAt, Number(groupData.updatedAt || 0));
-            saveLocalFallback();
-            renderAll();
-            if (activeDateKey) renderDayAttendees(activeDateKey);
-          }
-        };
-      }
+    function isImageAvatar(av) {
+      return typeof av === 'string' && (av.startsWith('data:image/') || av.startsWith('http://') || av.startsWith('https://'));
     }
 
-    function broadcastLocalUpdate() {
-      if (broadcastChannel) {
-        try {
-          broadcastChannel.postMessage({
-            group: currentGroup,
-            hasAdmin: serverHasAdmin,
-            data: groupData
-          });
-        } catch (e) {}
+    function renderAvatarHtml(avatar, sizeClass = 'w-8 h-8', textClass = 'text-base', borderColor = '') {
+      const borderStyle = borderColor ? `border: 2px solid ${borderColor};` : '';
+      if (isImageAvatar(avatar)) {
+        const safeSrc = avatar.replace(/"/g, '&quot;');
+        return `<img src="${safeSrc}" alt="Avatar" class="${sizeClass} rounded-full object-cover inline-block shrink-0" style="${borderStyle}" />`;
       }
+      return `<span class="${textClass} leading-none inline-flex items-center justify-center shrink-0">${escapeHtml(avatar || '🙂')}</span>`;
     }
 
-    function scheduleNextPoll(delayMs = FAST_POLL_INTERVAL_MS) {
-      clearTimeout(pollTimerId);
-      if (document.hidden) return;
-      pollTimerId = setTimeout(() => {
-        fetchGroupFromServer(false);
-      }, delayMs);
-    }
-
-    function updateSyncStatus(connected, label) {
-      isCloudConnected = connected;
-      const badge = document.getElementById('syncBadge');
-      const dot = document.getElementById('syncDot');
-      const text = document.getElementById('syncText');
-      if (!badge || !dot || !text) return;
-
-      if (connected) {
-        badge.className = 'inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
-        dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
-        text.textContent = label || 'Đồng bộ nhanh 1s (Netlify)';
-      } else {
-        badge.className = 'inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200';
-        dot.className = 'w-2 h-2 rounded-full bg-amber-500';
-        text.textContent = label || 'Lưu cục bộ trên máy';
-      }
-    }
-
-    function loadLocalFallback() {
-      const saved = localStorage.getItem(`ck_group_data_${currentGroup}`);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          groupData = {
-            members: parsed.members || {},
-            availability: parsed.availability || {},
-            ideas: parsed.ideas || {},
-            updatedAt: parsed.updatedAt || 0
-          };
-        } catch (e) {}
-      }
-      serverHasAdmin = Boolean(localStorage.getItem(`ck_local_has_admin_${currentGroup}`));
-    }
-
-    function saveLocalFallback() {
-      localStorage.setItem(`ck_group_data_${currentGroup}`, JSON.stringify(groupData));
-    }
-
-    async function fetchGroupFromServer(forceFull = false) {
-      if (isFetching || activeMutationsCount > 0) {
-        scheduleNextPoll(FAST_POLL_INTERVAL_MS);
-        return;
-      }
-
-      isFetching = true;
-      const requestedGroup = currentGroup;
-      const sinceParam = (!forceFull && lastKnownUpdatedAt > 0) ? `&since=${lastKnownUpdatedAt}` : '';
-
-      try {
-        const res = await fetch(`/api/sync?group=${encodeURIComponent(requestedGroup)}${sinceParam}`, {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' },
-          cache: 'no-store'
-        });
-        if (!res.ok) throw new Error('API unavailable');
-        const json = await res.json();
-
-        // Ignore stale response if user switched groups mid-request or started a mutation
-        if (requestedGroup !== currentGroup || activeMutationsCount > 0) {
-          return;
-        }
-
-        if (json.ok) {
-          if (typeof json.hasAdmin === 'boolean') serverHasAdmin = json.hasAdmin;
-          updateSyncStatus(true, 'Đồng bộ nhanh 1s (Netlify)');
-
-          if (json.unchanged) {
-            if (json.updatedAt) lastKnownUpdatedAt = Number(json.updatedAt);
-          } else if (json.data) {
-            groupData = {
-              members: json.data.members || {},
-              availability: json.data.availability || {},
-              ideas: json.data.ideas || {},
-              updatedAt: Number(json.data.updatedAt || Date.now())
-            };
-            lastKnownUpdatedAt = groupData.updatedAt;
-            saveLocalFallback();
-            renderAll();
-            if (activeDateKey) renderDayAttendees(activeDateKey);
-          }
-        }
-      } catch (err) {
-        if (!isCloudConnected) {
-          loadLocalFallback();
-          updateSyncStatus(false, 'Chế độ cục bộ (chưa deploy)');
-          renderAll();
-        }
-      } finally {
-        isFetching = false;
-        scheduleNextPoll(FAST_POLL_INTERVAL_MS);
-      }
-    }
-
-    async function pushActionToServer(action, payload) {
-      groupData.updatedAt = Date.now();
-      saveLocalFallback();
-      broadcastLocalUpdate();
-      renderAll();
-
-      activeMutationsCount++;
-      const targetGroup = currentGroup;
-
-      try {
-        const res = await fetch(`/api/sync?group=${encodeURIComponent(targetGroup)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action, payload })
-        });
-        const json = await res.json();
-        if (!res.ok || !json.ok) {
-          if (res.status === 403) {
-            showToast(json.error || 'Sai mã PIN Admin!', '⛔');
-            logoutAdmin(true);
-            lastKnownUpdatedAt = 0;
-            fetchGroupFromServer(true);
-            return false;
-          }
-          throw new Error(json.error || 'Sync failed');
-        }
-        if (targetGroup === currentGroup && json.data) {
-          if (typeof json.hasAdmin === 'boolean') serverHasAdmin = json.hasAdmin;
-          groupData = {
-            members: json.data.members || {},
-            availability: json.data.availability || {},
-            ideas: json.data.ideas || {},
-            updatedAt: Number(json.data.updatedAt || Date.now())
-          };
-          lastKnownUpdatedAt = groupData.updatedAt;
-          saveLocalFallback();
-          broadcastLocalUpdate();
-          updateSyncStatus(true, 'Đồng bộ nhanh 1s (Netlify)');
-          renderAll();
-          if (activeDateKey) renderDayAttendees(activeDateKey);
-        }
-        return true;
-      } catch (err) {
-        updateSyncStatus(false, 'Lưu trên máy này');
-        return true;
-      } finally {
-        activeMutationsCount = Math.max(0, activeMutationsCount - 1);
-        scheduleNextPoll(FAST_POLL_INTERVAL_MS);
-      }
-    }
-
-    // ==========================================
-    // 3. HELPER FUNCTIONS
-    // ==========================================
     function showToast(msg, icon = '✅') {
       const toast = document.getElementById('toast');
       document.getElementById('toastMsg').textContent = msg;
@@ -803,6 +702,100 @@
         .replace(/"/g, '&quot;');
     }
 
+    function updateSyncStatus(connected, label) {
+      isCloudConnected = connected;
+      const badge = document.getElementById('syncBadge');
+      const dot = document.getElementById('syncDot');
+      const text = document.getElementById('syncText');
+      if (!badge || !dot || !text) return;
+
+      if (connected) {
+        badge.className = 'inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+        text.textContent = label || 'Đồng bộ trực tiếp (Firebase)';
+      } else {
+        badge.className = 'inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200';
+        dot.className = 'w-2 h-2 rounded-full bg-amber-500';
+        text.textContent = label || 'Lưu trên máy này';
+      }
+    }
+
+    function loadLocalFallback() {
+      const saved = localStorage.getItem(`ck_group_data_${currentGroup}`);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          groupData = {
+            members: parsed.members || {},
+            availability: parsed.availability || {},
+            ideas: parsed.ideas || {},
+            adminPin: parsed.adminPin || '',
+            updatedAt: parsed.updatedAt || 0
+          };
+        } catch (e) {}
+      }
+      serverHasAdmin = Boolean(groupData.adminPin || localStorage.getItem(`ck_local_has_admin_${currentGroup}`));
+    }
+
+    function saveLocalFallback() {
+      try {
+        localStorage.setItem(`ck_group_data_${currentGroup}`, JSON.stringify(groupData));
+      } catch (e) {}
+    }
+
+    // ==========================================
+    // 4. FIREBASE REALTIME LISTENER & MUTATIONS
+    // ==========================================
+    function subscribeToGroup(groupCode) {
+      if (unsubscribeGroupSnapshot) {
+        unsubscribeGroupSnapshot();
+        unsubscribeGroupSnapshot = null;
+      }
+
+      const groupRef = doc(db, 'groups', groupCode);
+
+      unsubscribeGroupSnapshot = onSnapshot(
+        groupRef,
+        (snap) => {
+          updateSyncStatus(true, 'Đồng bộ trực tiếp (Firebase)');
+          if (snap.exists()) {
+            const data = snap.data();
+            groupData = {
+              members: data.members || {},
+              availability: data.availability || {},
+              ideas: data.ideas || {},
+              adminPin: data.adminPin || '',
+              updatedAt: Number(data.updatedAt || Date.now())
+            };
+            serverHasAdmin = Boolean(groupData.adminPin);
+            if (isAdmin && groupData.adminPin && groupData.adminPin !== adminPin) {
+              logoutAdmin(true);
+            }
+          } else {
+            groupData = { members: {}, availability: {}, ideas: {}, adminPin: '', updatedAt: 0 };
+            serverHasAdmin = false;
+          }
+
+          // Nếu người dùng đã có hồ sơ trên máy nhưng chưa nằm trong nhóm mới này thì tự đồng bộ lên
+          if (currentUser && !groupData.members[currentUser.id]) {
+            groupData.members[currentUser.id] = currentUser;
+            setDoc(groupRef, {
+              members: { [currentUser.id]: currentUser },
+              updatedAt: Date.now()
+            }, { merge: true }).catch(() => {});
+          }
+
+          saveLocalFallback();
+          renderAll();
+          if (activeDateKey) renderDayAttendees(activeDateKey);
+        },
+        (error) => {
+          console.warn('Firestore error:', error);
+          updateSyncStatus(false, 'Chưa bật Firestore (lưu cục bộ)');
+        }
+      );
+    }
+
     function syncUrlGroupParam() {
       const url = new URL(window.location.href);
       url.searchParams.set('group', currentGroup);
@@ -810,15 +803,165 @@
       localStorage.setItem('ck_last_group', currentGroup);
       document.getElementById('currentGroupLabel').textContent = currentGroup;
 
-      lastKnownUpdatedAt = 0;
-      setupBroadcastChannel();
       adminPin = localStorage.getItem(`ck_admin_pin_${currentGroup}`) || '';
       isAdmin = Boolean(adminPin);
       updateAdminUI();
+      loadLocalFallback();
+      renderAll();
+      subscribeToGroup(currentGroup);
+    }
+
+    async function pushActionToFirebase(action, payload) {
+      groupData.updatedAt = Date.now();
+      saveLocalFallback();
+      renderAll();
+      if (activeDateKey) renderDayAttendees(activeDateKey);
+
+      const groupRef = doc(db, 'groups', currentGroup);
+
+      try {
+        if (action === 'upsert_member') {
+          await setDoc(groupRef, {
+            members: { [payload.member.id]: payload.member },
+            updatedAt: Date.now()
+          }, { merge: true });
+        } else if (action === 'set_availability' || action === 'admin_set_availability') {
+          const { dateKey, memberId, slotData } = payload;
+          if (slotData) {
+            await setDoc(groupRef, {
+              availability: { [dateKey]: { [memberId]: slotData } },
+              updatedAt: Date.now()
+            }, { merge: true });
+          } else {
+            await updateDoc(groupRef, {
+              [`availability.${dateKey}.${memberId}`]: deleteField(),
+              updatedAt: Date.now()
+            });
+          }
+        } else if (action === 'admin_clear_day') {
+          await updateDoc(groupRef, {
+            [`availability.${payload.dateKey}`]: deleteField(),
+            updatedAt: Date.now()
+          });
+        } else if (action === 'add_idea') {
+          await setDoc(groupRef, {
+            ideas: { [payload.idea.id]: payload.idea },
+            updatedAt: Date.now()
+          }, { merge: true });
+        } else if (action === 'admin_edit_idea') {
+          await setDoc(groupRef, {
+            ideas: {
+              [payload.ideaId]: {
+                title: payload.title,
+                location: payload.location,
+                dateKey: payload.dateKey
+              }
+            },
+            updatedAt: Date.now()
+          }, { merge: true });
+        } else if (action === 'toggle_vote') {
+          const { ideaId, memberId, voted } = payload;
+          if (voted) {
+            await setDoc(groupRef, {
+              ideas: { [ideaId]: { votes: { [memberId]: true } } },
+              updatedAt: Date.now()
+            }, { merge: true });
+          } else {
+            await updateDoc(groupRef, {
+              [`ideas.${ideaId}.votes.${memberId}`]: deleteField(),
+              updatedAt: Date.now()
+            });
+          }
+        } else if (action === 'delete_idea' || action === 'admin_delete_idea') {
+          await updateDoc(groupRef, {
+            [`ideas.${payload.ideaId}`]: deleteField(),
+            updatedAt: Date.now()
+          });
+        } else if (action === 'admin_clear_all_ideas') {
+          await updateDoc(groupRef, {
+            ideas: {},
+            updatedAt: Date.now()
+          });
+        } else if (action === 'admin_edit_member') {
+          await setDoc(groupRef, {
+            members: { [payload.memberId]: { name: payload.name } },
+            updatedAt: Date.now()
+          }, { merge: true });
+        } else if (action === 'admin_delete_member') {
+          const updates = {
+            [`members.${payload.memberId}`]: deleteField(),
+            updatedAt: Date.now()
+          };
+          for (const dk of Object.keys(groupData.availability || {})) {
+            updates[`availability.${dk}.${payload.memberId}`] = deleteField();
+          }
+          for (const ideaId of Object.keys(groupData.ideas || {})) {
+            updates[`ideas.${ideaId}.votes.${payload.memberId}`] = deleteField();
+          }
+          await updateDoc(groupRef, updates);
+        } else if (action === 'admin_change_pin') {
+          await setDoc(groupRef, {
+            adminPin: payload.newPin,
+            updatedAt: Date.now()
+          }, { merge: true });
+        }
+        return true;
+      } catch (err) {
+        console.warn('Firestore write fallback:', err);
+        updateSyncStatus(false, 'Chưa bật Firestore (đã lưu trên máy)');
+        return true;
+      }
     }
 
     // ==========================================
-    // 4. ADMIN AUTH & MANAGEMENT ACTIONS
+    // 5. CUSTOM AVATAR UPLOAD & IMAGE COMPRESSION
+    // ==========================================
+    function updateAvatarPreviewBox() {
+      const box = document.getElementById('avatarPreviewBox');
+      if (!box) return;
+      if (isImageAvatar(selectedAvatar)) {
+        box.innerHTML = `<img src="${selectedAvatar}" alt="Preview" class="w-full h-full object-cover" />`;
+      } else {
+        box.innerHTML = `<span class="text-4xl">${escapeHtml(selectedAvatar || '📷')}</span>`;
+      }
+    }
+
+    window.handleAvatarFileUpload = function(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const size = 160; // 160x160px sắc nét mà chỉ nặng ~8KB
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+
+          // Tự động cắt vuông chính giữa ảnh
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          selectedAvatar = canvas.toDataURL('image/jpeg', 0.82);
+
+          updateAvatarPreviewBox();
+          initPickers();
+          showToast('Đã tải ảnh đại diện lên! 📸', '📸');
+        };
+        img.onerror = function() {
+          showToast('Không đọc được ảnh này, bạn chọn ảnh JPG/PNG khác nhé!', '⚠️');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
+
+    // ==========================================
+    // 6. ADMIN AUTH & MANAGEMENT ACTIONS
     // ==========================================
     function updateAdminUI() {
       const btn = document.getElementById('adminHeaderBtn');
@@ -885,35 +1028,17 @@
         return;
       }
 
-      activeMutationsCount++;
+      const groupRef = doc(db, 'groups', currentGroup);
       try {
-        const res = await fetch(`/api/sync?group=${encodeURIComponent(currentGroup)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'admin_setup_or_verify', payload: { pin } })
-        });
-        const json = await res.json();
-        if (!res.ok || !json.ok) {
-          showToast(json.error || 'Sai mã PIN Admin!', '⛔');
+        const snap = await getDoc(groupRef);
+        const existingPin = snap.exists() ? (snap.data().adminPin || '') : '';
+
+        if (!existingPin) {
+          await setDoc(groupRef, { adminPin: pin, updatedAt: Date.now() }, { merge: true });
+        } else if (existingPin !== pin) {
+          showToast('Sai mã PIN Admin!', '⛔');
           return;
         }
-        adminPin = pin;
-        isAdmin = true;
-        serverHasAdmin = true;
-        localStorage.setItem(`ck_admin_pin_${currentGroup}`, pin);
-        if (json.data) {
-          groupData = {
-            members: json.data.members || {},
-            availability: json.data.availability || {},
-            ideas: json.data.ideas || {},
-            updatedAt: Number(json.data.updatedAt || Date.now())
-          };
-          lastKnownUpdatedAt = groupData.updatedAt;
-        }
-        closeAdminAuthModal();
-        updateAdminUI();
-        renderAll();
-        showToast('Đã kích hoạt chế độ Admin! 👑', '👑');
       } catch (err) {
         const localSavedPin = localStorage.getItem(`ck_local_admin_pin_${currentGroup}`);
         if (!localSavedPin) {
@@ -923,18 +1048,17 @@
           showToast('Sai mã PIN Admin!', '⛔');
           return;
         }
-        adminPin = pin;
-        isAdmin = true;
-        serverHasAdmin = true;
-        localStorage.setItem(`ck_admin_pin_${currentGroup}`, pin);
-        closeAdminAuthModal();
-        updateAdminUI();
-        renderAll();
-        showToast('Đã kích hoạt chế độ Admin (cục bộ)! 👑', '👑');
-      } finally {
-        activeMutationsCount = Math.max(0, activeMutationsCount - 1);
-        scheduleNextPoll(FAST_POLL_INTERVAL_MS);
       }
+
+      adminPin = pin;
+      isAdmin = true;
+      serverHasAdmin = true;
+      groupData.adminPin = pin;
+      localStorage.setItem(`ck_admin_pin_${currentGroup}`, pin);
+      closeAdminAuthModal();
+      updateAdminUI();
+      renderAll();
+      showToast('Đã kích hoạt chế độ Admin! 👑', '👑');
     };
 
     window.logoutAdmin = function(silent = false) {
@@ -983,12 +1107,14 @@
           if (dayMap && dayMap[m.id]) freeDaysCount++;
         });
 
+        const avHtml = isImageAvatar(m.avatar)
+          ? renderAvatarHtml(m.avatar, 'w-8 h-8', 'text-base', m.color)
+          : `<span class="w-8 h-8 rounded-full flex items-center justify-center text-base shrink-0" style="background-color: ${m.color}20; border: 1.5px solid ${m.color}">${escapeHtml(m.avatar)}</span>`;
+
         return `
           <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
             <div class="flex items-center gap-2.5 min-w-0">
-              <span class="w-8 h-8 rounded-full flex items-center justify-center text-base shrink-0" style="background-color: ${m.color}20; border: 1.5px solid ${m.color}">
-                ${escapeHtml(m.avatar)}
-              </span>
+              ${avHtml}
               <div class="min-w-0">
                 <div class="text-xs font-extrabold text-slate-800 truncate">${escapeHtml(m.name)}</div>
                 <div class="text-[10px] text-slate-500">Đã đăng ký ${freeDaysCount} ngày rảnh</div>
@@ -1021,7 +1147,7 @@
       }
       renderAdminMembersList();
       showToast(`Đã đổi tên thành "${trimmed}"`, '👑');
-      await pushActionToServer('admin_edit_member', { adminPin, memberId, name: trimmed });
+      await pushActionToFirebase('admin_edit_member', { memberId, name: trimmed });
     };
 
     window.adminDeleteMember = async function(memberId) {
@@ -1046,7 +1172,7 @@
 
       renderAdminMembersList();
       showToast(`Đã xóa thành viên "${m.name}" và dọn sạch lịch của họ!`, '🧹');
-      await pushActionToServer('admin_delete_member', { adminPin, memberId });
+      await pushActionToFirebase('admin_delete_member', { memberId });
     };
 
     window.adminClearAllIdeas = async function() {
@@ -1054,7 +1180,7 @@
       if (!confirm('Xóa toàn bộ danh sách kèo đề xuất hiện tại?')) return;
       groupData.ideas = {};
       showToast('Đã xóa sạch toàn bộ đề xuất kèo!', '🧹');
-      await pushActionToServer('admin_clear_all_ideas', { adminPin });
+      await pushActionToFirebase('admin_clear_all_ideas', {});
     };
 
     window.adminChangePin = async function() {
@@ -1064,18 +1190,17 @@
         showToast('Mã PIN mới cần tối thiểu 4 ký tự!', '⚠️');
         return;
       }
-      const ok = await pushActionToServer('admin_change_pin', { adminPin, newPin });
-      if (ok) {
-        adminPin = newPin;
-        localStorage.setItem(`ck_admin_pin_${currentGroup}`, newPin);
-        localStorage.setItem(`ck_local_admin_pin_${currentGroup}`, newPin);
-        document.getElementById('adminNewPinInput').value = '';
-        showToast('Đã cập nhật mã PIN Admin mới!', '🔐');
-      }
+      await pushActionToFirebase('admin_change_pin', { newPin });
+      adminPin = newPin;
+      groupData.adminPin = newPin;
+      localStorage.setItem(`ck_admin_pin_${currentGroup}`, newPin);
+      localStorage.setItem(`ck_local_admin_pin_${currentGroup}`, newPin);
+      document.getElementById('adminNewPinInput').value = '';
+      showToast('Đã cập nhật mã PIN Admin mới!', '🔐');
     };
 
     // ==========================================
-    // 5. USER PROFILE & GROUP ACTIONS
+    // 7. USER PROFILE & GROUP ACTIONS
     // ==========================================
     function initPickers() {
       const avatarContainer = document.getElementById('avatarPicker');
@@ -1093,6 +1218,7 @@
 
     window.selectAvatar = function(av) {
       selectedAvatar = av;
+      updateAvatarPreviewBox();
       initPickers();
     };
 
@@ -1105,6 +1231,8 @@
       document.getElementById('profileNameInput').value = currentUser?.name || '';
       selectedAvatar = currentUser?.avatar || '😎';
       selectedColor = currentUser?.color || '#f97316';
+      document.getElementById('avatarFileInput').value = '';
+      updateAvatarPreviewBox();
       initPickers();
       const modal = document.getElementById('profileModal');
       modal.classList.remove('hidden');
@@ -1136,8 +1264,8 @@
       localStorage.setItem('ck_user_profile', JSON.stringify(currentUser));
       groupData.members[id] = currentUser;
       closeProfileModal();
-      showToast(`Chào ${rawName}! Bạn đã sẵn sàng chốt kèo 🎉`);
-      pushActionToServer('upsert_member', { member: currentUser });
+      showToast(`Chào ${rawName}! Hồ sơ & ảnh đại diện đã lưu 🎉`);
+      pushActionToFirebase('upsert_member', { member: currentUser });
     };
 
     window.copyInviteLink = function() {
@@ -1155,15 +1283,13 @@
       const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
       const num = Math.floor(100 + Math.random() * 900);
       currentGroup = `${prefix}${num}`;
-      groupData = { members: {}, availability: {}, ideas: {}, updatedAt: 0 };
+      groupData = { members: {}, availability: {}, ideas: {}, adminPin: '', updatedAt: 0 };
       serverHasAdmin = false;
       syncUrlGroupParam();
 
       if (currentUser) {
         groupData.members[currentUser.id] = currentUser;
-        pushActionToServer('upsert_member', { member: currentUser });
-      } else {
-        fetchGroupFromServer(true);
+        pushActionToFirebase('upsert_member', { member: currentUser });
       }
       showToast(`Đã tạo phòng nhóm mới: ${currentGroup}`, '✨');
     };
@@ -1191,20 +1317,14 @@
         return;
       }
       currentGroup = code;
-      groupData = { members: {}, availability: {}, ideas: {}, updatedAt: 0 };
+      groupData = { members: {}, availability: {}, ideas: {}, adminPin: '', updatedAt: 0 };
       syncUrlGroupParam();
       closeGroupModal();
-      fetchGroupFromServer(true).then(() => {
-        if (currentUser && !groupData.members[currentUser.id]) {
-          groupData.members[currentUser.id] = currentUser;
-          pushActionToServer('upsert_member', { member: currentUser });
-        }
-      });
       showToast(`Đã chuyển sang nhóm ${currentGroup}`, '🚀');
     };
 
     // ==========================================
-    // 6. CALENDAR & AVAILABILITY (WITH ADMIN EDIT/DELETE)
+    // 8. CALENDAR & AVAILABILITY
     // ==========================================
     window.setCalendarFilter = function(mode) {
       calendarFilter = mode;
@@ -1269,7 +1389,7 @@
     window.openDayModal = function(dateKey) {
       if (!currentUser && !isAdmin) {
         openProfileModal();
-        showToast('Nhập tên của bạn trước khi chọn ngày rảnh nhé!', '👋');
+        showToast('Đăng ký tên & ảnh của bạn trước khi chọn ngày rảnh nhé!', '📸');
         return;
       }
 
@@ -1325,8 +1445,7 @@
       }
       renderDayAttendees(activeDateKey);
       showToast(`Admin đã xóa lịch ngày này của ${mName}`, '🗑️');
-      await pushActionToServer('admin_set_availability', {
-        adminPin,
+      await pushActionToFirebase('admin_set_availability', {
         dateKey: activeDateKey,
         memberId,
         slotData: null
@@ -1340,7 +1459,7 @@
       delete groupData.availability[targetDate];
       renderDayAttendees(targetDate);
       showToast('Admin đã xóa sạch lịch rảnh trong ngày!', '🧹');
-      await pushActionToServer('admin_clear_day', { adminPin, dateKey: targetDate });
+      await pushActionToFirebase('admin_clear_day', { dateKey: targetDate });
     };
 
     window.toggleSlotSelection = function(slot) {
@@ -1406,8 +1525,7 @@
         loadSlotEditorForMember(currentUser?.id);
         renderDayAttendees(savedDate);
         showToast('Admin đã cập nhật lịch rảnh thành công!', '👑');
-        await pushActionToServer('admin_set_availability', {
-          adminPin,
+        await pushActionToFirebase('admin_set_availability', {
           dateKey: savedDate,
           memberId: targetId,
           slotData: { slots: savedSlots, note }
@@ -1415,8 +1533,8 @@
       } else {
         closeDayModal();
         showToast('Đã cập nhật lịch rảnh của bạn!', '🗓️');
-        await pushActionToServer('upsert_member', { member: currentUser });
-        await pushActionToServer('set_availability', {
+        await pushActionToFirebase('upsert_member', { member: currentUser });
+        await pushActionToFirebase('set_availability', {
           dateKey: savedDate,
           memberId: targetId,
           slotData: { slots: savedSlots, note }
@@ -1444,8 +1562,7 @@
         loadSlotEditorForMember(currentUser?.id);
         renderDayAttendees(clearedDate);
         showToast('Admin đã xóa lịch ngày này!', '🗑️');
-        await pushActionToServer('admin_set_availability', {
-          adminPin,
+        await pushActionToFirebase('admin_set_availability', {
           dateKey: clearedDate,
           memberId: targetId,
           slotData: null
@@ -1453,7 +1570,7 @@
       } else {
         closeDayModal();
         showToast('Đã hủy đăng ký rảnh ngày này', '🗑️');
-        await pushActionToServer('set_availability', {
+        await pushActionToFirebase('set_availability', {
           dateKey: clearedDate,
           memberId: targetId,
           slotData: null
@@ -1489,12 +1606,14 @@
           </div>
         ` : '';
 
+        const avHtml = isImageAvatar(m.avatar)
+          ? renderAvatarHtml(m.avatar, 'w-9 h-9', 'text-base', m.color)
+          : `<span class="w-9 h-9 rounded-full flex items-center justify-center text-base shrink-0" style="background-color: ${m.color}20; border: 1.5px solid ${m.color}">${escapeHtml(m.avatar)}</span>`;
+
         return `
           <div class="flex items-start justify-between gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-100">
             <div class="flex items-center gap-2.5">
-              <span class="w-8 h-8 rounded-full flex items-center justify-center text-base shrink-0" style="background-color: ${m.color}20; border: 1.5px solid ${m.color}">
-                ${escapeHtml(m.avatar)}
-              </span>
+              ${avHtml}
               <div>
                 <div class="text-xs font-extrabold text-slate-800">${escapeHtml(m.name)}</div>
                 ${info.note ? `<div class="text-[11px] text-slate-500 mt-0.5">“${escapeHtml(info.note)}”</div>` : ''}
@@ -1510,12 +1629,12 @@
     }
 
     // ==========================================
-    // 7. HANGOUT IDEAS & VOTING (WITH ADMIN EDIT/DELETE)
+    // 9. HANGOUT IDEAS & VOTING
     // ==========================================
     window.openIdeaModal = function(prefillDate = '') {
       if (!currentUser && !isAdmin) {
         openProfileModal();
-        showToast('Nhập tên của bạn trước khi thêm kèo nhé!', '👋');
+        showToast('Đăng ký hồ sơ của bạn trước khi thêm kèo nhé!', '👋');
         return;
       }
       editingIdeaId = null;
@@ -1568,8 +1687,7 @@
         groupData.ideas[targetIdeaId].dateKey = dateKey;
         closeIdeaModal();
         showToast('Admin đã cập nhật nội dung kèo!', '👑');
-        await pushActionToServer('admin_edit_idea', {
-          adminPin,
+        await pushActionToFirebase('admin_edit_idea', {
           ideaId: targetIdeaId,
           title,
           location,
@@ -1586,54 +1704,56 @@
         location,
         dateKey,
         authorId,
+        createdAt: Date.now(),
         votes: currentUser ? { [currentUser.id]: true } : {}
       };
 
       groupData.ideas[id] = newIdea;
       closeIdeaModal();
       showToast('Đã đăng đề xuất kèo mới!', '🎯');
-      await pushActionToServer('add_idea', { idea: newIdea });
+      await pushActionToFirebase('add_idea', { idea: newIdea });
     };
 
     window.toggleIdeaVote = function(ideaId) {
       if (!currentUser) {
         openProfileModal();
-        showToast('Nhập tên của bạn để thả tim bình chọn nhé!', '❤️');
+        showToast('Đăng ký hồ sơ của bạn để thả tim bình chọn nhé!', '❤️');
         return;
       }
       const idea = groupData.ideas[ideaId];
       if (!idea) return;
       idea.votes = idea.votes || {};
+      let voted = false;
       if (idea.votes[currentUser.id]) {
         delete idea.votes[currentUser.id];
+        voted = false;
       } else {
         idea.votes[currentUser.id] = true;
+        voted = true;
       }
-      pushActionToServer('toggle_vote', { ideaId, memberId: currentUser.id });
+      pushActionToFirebase('toggle_vote', { ideaId, memberId: currentUser.id, voted });
     };
 
     window.deleteIdea = async function(ideaId) {
       delete groupData.ideas[ideaId];
       showToast('Đã xóa đề xuất kèo', '🗑️');
-      if (isAdmin) {
-        await pushActionToServer('admin_delete_idea', { adminPin, ideaId });
-      } else {
-        await pushActionToServer('delete_idea', { ideaId });
-      }
+      await pushActionToFirebase(isAdmin ? 'admin_delete_idea' : 'delete_idea', { ideaId });
     };
 
     // ==========================================
-    // 8. RENDER FUNCTIONS
+    // 10. RENDER FUNCTIONS (HỖ TRỢ ẢNH AVATAR THẬT)
     // ==========================================
     function renderHeaderAndMembers() {
       const banner = document.getElementById('welcomeBanner');
+      const headerAvatarEl = document.getElementById('headerAvatar');
+
       if (currentUser) {
-        document.getElementById('headerAvatar').textContent = currentUser.avatar;
+        headerAvatarEl.innerHTML = renderAvatarHtml(currentUser.avatar, 'w-7 h-7', 'text-lg', currentUser.color);
         document.getElementById('headerName').textContent = currentUser.name;
         banner.classList.add('hidden');
       } else {
-        document.getElementById('headerAvatar').textContent = '👋';
-        document.getElementById('headerName').textContent = 'Nhập tên bạn ▾';
+        headerAvatarEl.innerHTML = '👋';
+        document.getElementById('headerName').textContent = 'Đăng ký / Nhập tên ▾';
         banner.classList.remove('hidden');
       }
 
@@ -1645,8 +1765,8 @@
         strip.innerHTML = `<span class="text-slate-400 italic">Chưa có thành viên nào</span>`;
       } else {
         strip.innerHTML = members.map(m => `
-          <span class="inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-full text-xs font-bold text-slate-700 shadow-2xs">
-            <span>${escapeHtml(m.avatar)}</span>
+          <span class="inline-flex items-center gap-1.5 bg-white border border-slate-200 pl-1 pr-2.5 py-0.5 rounded-full text-xs font-bold text-slate-700 shadow-2xs">
+            ${renderAvatarHtml(m.avatar, 'w-5 h-5', 'text-sm', m.color)}
             <span>${escapeHtml(m.name)}</span>
           </span>
         `).join('');
@@ -1665,228 +1785,4 @@
       const todayKey = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
 
       let maxCountInMonth = 0;
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dk = formatDateKey(viewYear, viewMonth, d);
-        const cnt = Object.keys(groupData.availability?.[dk] || {}).length;
-        if (cnt > maxCountInMonth) maxCountInMonth = cnt;
-      }
-
-      let html = '';
-      for (let i = 0; i < startOffset; i++) {
-        html += `<div class="empty-cell h-20 sm:h-24 rounded-2xl bg-slate-50/50"></div>`;
-      }
-
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dk = formatDateKey(viewYear, viewMonth, d);
-        const dayAvail = groupData.availability?.[dk] || {};
-        const freeUserIds = Object.keys(dayAvail);
-        const isMine = currentUser && Boolean(dayAvail[currentUser.id]);
-
-        if (calendarFilter === 'mine' && !isMine) {
-          html += `
-            <button onclick="openDayModal('${dk}')" class="calendar-cell h-20 sm:h-24 rounded-2xl border border-slate-100 bg-slate-50/40 p-2 flex flex-col justify-between text-left opacity-45 hover:opacity-90">
-              <span class="text-xs font-bold text-slate-400">${d}</span>
-            </button>
-          `;
-          continue;
-        }
-
-        const count = freeUserIds.length;
-        const isToday = dk === todayKey;
-        const isGolden = count >= 2 && count === maxCountInMonth;
-
-        let cellStyle = 'bg-white border-slate-200/80 hover:border-orange-300';
-        if (isGolden) {
-          cellStyle = 'golden-glow border-2';
-        } else if (count >= 3 || (count >= 2 && count / totalMembers >= 0.6)) {
-          cellStyle = 'bg-amber-50/90 border-amber-300';
-        } else if (count === 2) {
-          cellStyle = 'bg-orange-50/80 border-orange-200';
-        } else if (count === 1) {
-          cellStyle = 'bg-orange-50/40 border-orange-100';
-        }
-
-        const avatarsHtml = freeUserIds.slice(0, 4).map(uid => {
-          const m = groupData.members[uid];
-          return `<span class="text-xs sm:text-sm leading-none" title="${escapeHtml(m?.name || '')}">${escapeHtml(m?.avatar || '🙂')}</span>`;
-        }).join('');
-
-        const extraBadge = count > 4 ? `<span class="text-[10px] font-extrabold text-orange-600">+${count - 4}</span>` : '';
-
-        html += `
-          <button onclick="openDayModal('${dk}')" class="calendar-cell h-20 sm:h-24 rounded-2xl border ${cellStyle} ${isToday ? 'ring-2 ring-orange-500 ring-offset-1' : ''} p-1.5 sm:p-2 flex flex-col justify-between text-left relative">
-            <div class="flex items-center justify-between w-full">
-              <span class="text-xs sm:text-sm font-extrabold ${isToday ? 'text-orange-600' : 'text-slate-800'}">${d}</span>
-              <div class="flex items-center gap-1">
-                ${isGolden ? '<span class="text-[10px]" title="Ngày Vàng">🔥</span>' : ''}
-                ${isMine ? '<span class="w-2 h-2 rounded-full bg-emerald-500" title="Bạn rảnh ngày này"></span>' : ''}
-              </div>
-            </div>
-
-            <div class="w-full">
-              ${count > 0 ? `
-                <div class="flex items-center flex-wrap gap-0.5 mb-0.5">${avatarsHtml}${extraBadge}</div>
-                <div class="text-[10px] font-bold ${isGolden ? 'text-amber-700' : 'text-slate-500'}">${count} người rảnh</div>
-              ` : ''}
-            </div>
-          </button>
-        `;
-      }
-
-      grid.innerHTML = html;
-    }
-
-    function renderGoldenDays() {
-      const container = document.getElementById('goldenDaysList');
-      const todayKey = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
-      const allMembers = Object.values(groupData.members || {});
-      const totalMembers = allMembers.length;
-
-      const ranked = Object.entries(groupData.availability || {})
-        .filter(([dk, users]) => dk >= todayKey && Object.keys(users).length > 0)
-        .map(([dk, users]) => {
-          const userIds = Object.keys(users);
-          const slotCounts = {};
-          userIds.forEach(uid => {
-            const sList = users[uid].slots || [];
-            if (sList.includes('Cả ngày')) {
-              ['Sáng', 'Chiều', 'Tối'].forEach(s => slotCounts[s] = (slotCounts[s] || 0) + 1);
-            } else {
-              sList.forEach(s => slotCounts[s] = (slotCounts[s] || 0) + 1);
-            }
-          });
-          const bestSlots = Object.entries(slotCounts)
-            .filter(([_, c]) => c === userIds.length)
-            .map(([s]) => s);
-
-          return {
-            dateKey: dk,
-            count: userIds.length,
-            userIds,
-            commonSlotText: bestSlots.length === 3 ? 'Cả ngày' : (bestSlots.length > 0 ? bestSlots.join(', ') : 'Linh hoạt giờ')
-          };
-        })
-        .sort((a, b) => b.count - a.count || a.dateKey.localeCompare(b.dateKey))
-        .slice(0, 5);
-
-      if (ranked.length === 0) {
-        container.innerHTML = `
-          <div class="text-center py-7 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-            <div class="text-2xl mb-1">📅</div>
-            <p class="text-xs font-bold text-slate-600">Chưa có lịch rảnh sắp tới nào</p>
-            <p class="text-[11px] text-slate-400 mt-0.5">Hãy bấm vào các ngày trên lịch để hệ thống tìm Ngày Vàng cho hội!</p>
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = ranked.map((item, idx) => {
-        const isTop = idx === 0;
-        const pct = totalMembers > 0 ? Math.round((item.count / totalMembers) * 100) : 100;
-        const avatars = item.userIds.map(uid => {
-          const m = groupData.members[uid];
-          return `<span title="${escapeHtml(m?.name || '')}">${escapeHtml(m?.avatar || '🙂')}</span>`;
-        }).join(' ');
-
-        return `
-          <div class="p-3 rounded-2xl border ${isTop ? 'golden-glow' : 'bg-slate-50/70 border-slate-200/80'} flex items-center justify-between gap-3">
-            <div class="min-w-0">
-              <div class="flex items-center gap-1.5 flex-wrap">
-                <span class="text-xs font-extrabold ${isTop ? 'text-amber-700' : 'text-slate-600'}">#${idx + 1}</span>
-                <button onclick="openDayModal('${item.dateKey}')" class="text-xs sm:text-sm font-extrabold text-slate-900 hover:text-orange-600 truncate">
-                  ${formatVietnameseDate(item.dateKey)}
-                </button>
-              </div>
-              <div class="flex items-center gap-2 mt-1 text-[11px] text-slate-600 flex-wrap">
-                <span class="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                  ${item.count}/${Math.max(totalMembers, item.count)} người (${pct}%)
-                </span>
-                <span class="text-slate-500">⏰ ${item.commonSlotText}</span>
-              </div>
-              <div class="mt-1.5 text-sm tracking-wide">${avatars}</div>
-            </div>
-
-            <button onclick="openIdeaModal('${item.dateKey}')" class="shrink-0 bg-white hover:bg-orange-50 text-orange-600 border border-orange-200 text-[11px] font-extrabold px-2.5 py-2 rounded-xl transition">
-              Chốt kèo →
-            </button>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function renderIdeas() {
-      const container = document.getElementById('ideasList');
-      const ideas = Object.values(groupData.ideas || {})
-        .sort((a, b) => Object.keys(b.votes || {}).length - Object.keys(a.votes || {}).length || (b.createdAt || 0) - (a.createdAt || 0));
-
-      if (ideas.length === 0) {
-        container.innerHTML = `
-          <div class="text-center py-7 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-            <div class="text-2xl mb-1">🍕</div>
-            <p class="text-xs font-bold text-slate-600">Chưa có ý tưởng đi chơi nào</p>
-            <p class="text-[11px] text-slate-400 mt-0.5">Bấm "+ Thêm kèo" để rủ hội đi ăn nướng, cà phê hoặc phượt cuối tuần!</p>
-          </div>
-        `;
-        return;
-      }
-
-      container.innerHTML = ideas.map(idea => {
-        const voteIds = Object.keys(idea.votes || {});
-        const hasVoted = currentUser && Boolean(idea.votes?.[currentUser.id]);
-        const isAuthor = currentUser && idea.authorId === currentUser.id;
-        const canDelete = isAuthor || isAdmin;
-        const author = groupData.members[idea.authorId];
-
-        return `
-          <div class="p-3.5 rounded-2xl border border-slate-200/90 bg-slate-50/50 hover:bg-white transition flex items-start justify-between gap-3">
-            <div class="min-w-0 space-y-1">
-              <div class="font-extrabold text-sm text-slate-900">${escapeHtml(idea.title)}</div>
-              ${idea.location ? `<div class="text-xs text-slate-600">📍 ${escapeHtml(idea.location)}</div>` : ''}
-              <div class="flex items-center gap-2 flex-wrap pt-0.5 text-[11px] text-slate-500">
-                ${idea.dateKey ? `<span class="bg-amber-50 text-amber-700 border border-amber-200 font-bold px-2 py-0.5 rounded-md">🗓️ ${formatVietnameseDate(idea.dateKey)}</span>` : ''}
-                <span>Đề xuất bởi <strong>${escapeHtml(author?.name || 'Thành viên')}</strong></span>
-                ${isAdmin ? `<button onclick="adminOpenEditIdeaModal('${idea.id}')" class="text-amber-700 hover:underline font-bold">✏️ Sửa</button>` : ''}
-                ${canDelete ? `<button onclick="deleteIdea('${idea.id}')" class="text-rose-500 hover:underline font-semibold">🗑️ Xóa</button>` : ''}
-              </div>
-            </div>
-
-            <button onclick="toggleIdeaVote('${idea.id}')" class="shrink-0 flex flex-col items-center justify-center min-w-[54px] py-2 px-2.5 rounded-2xl border transition ${hasVoted ? 'bg-rose-50 border-rose-300 text-rose-600 shadow-2xs' : 'bg-white border-slate-200 text-slate-600 hover:border-rose-200'}">
-              <span class="text-base leading-none">${hasVoted ? '❤️' : '🤍'}</span>
-              <span class="text-xs font-extrabold mt-1">${voteIds.length}</span>
-            </button>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function renderAll() {
-      renderHeaderAndMembers();
-      renderCalendar();
-      renderGoldenDays();
-      renderIdeas();
-    }
-
-    // ==========================================
-    // 9. INITIALIZATION & FAST EVENT LISTENERS
-    // ==========================================
-    syncUrlGroupParam();
-    loadLocalFallback();
-    renderAll();
-    fetchGroupFromServer(true);
-
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) {
-        fetchGroupFromServer(false);
-      } else {
-        clearTimeout(pollTimerId);
-      }
-    });
-
-    window.addEventListener('focus', () => {
-      if (!document.hidden) {
-        fetchGroupFromServer(false);
-      }
-    });
-  </script>
-</body>
-</html>
+      for (let d = 1; d
